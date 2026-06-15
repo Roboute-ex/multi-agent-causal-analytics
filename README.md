@@ -19,6 +19,19 @@
 - Streamlit 前端展示 ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown 下载
 - pytest 覆盖端到端 pipeline、Excel/CSV 数据读取、CATE optional skip 和 refutation 结构
 
+## 可选功能：LLM-assisted Variable Recommendation
+
+当前版本提供一个默认关闭的 LLM 变量推荐入口。用户可以输入自然语言问题，例如“优惠券是否提升购买率？”，系统会基于当前数据集列名和简单字段画像，尝试推荐：
+
+- Treatment
+- Outcome
+- Confounders
+- Effect Modifiers
+
+该功能只作为 UI 辅助，不会自动运行因果分析，也不会替代手动变量选择。没有 DeepSeek API key 时会显示 `skipped`；LLM 返回格式错误时会 fallback，用户仍然可以手动选择所有变量。
+
+该功能复用现有可选 DeepSeek 配置，但不属于 deterministic MVP 的必要依赖。不要把真实 API key 写入代码、README 或提交到 GitHub。
+
 ## Agent 架构
 
 当前流程由 `AnalyticsTeamOrchestrator` 按固定顺序编排：
@@ -163,6 +176,8 @@ http://localhost:8501
 
 DeepSeek / LLM 报告增强不在基础依赖中，也不是运行 MVP 的必要条件。未配置 `.env` 或未勾选前端选项时，系统只使用本地 Reporter Agent 生成 Markdown 报告。
 
+LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。未配置 `.env` 时变量推荐会安全跳过，不影响手动选择变量、ATE、CATE、Reviewer 或 Markdown 报告。
+
 ## 当前限制
 
 - 第一阶段不使用 LangGraph
@@ -171,6 +186,7 @@ DeepSeek / LLM 报告增强不在基础依赖中，也不是运行 MVP 的必要
 - 第一阶段不做用户登录、数据库或部署
 - 当前 DAG 由用户选择的变量构造，因果假设需要分析者自己负责
 - DeepSeek 报告增强是可选能力，默认关闭，不作为 MVP 验收条件
+- LLM 变量推荐只是辅助选择字段，不等同于自动因果发现，也不会证明因果识别成立
 
 ## 后续路线图
 

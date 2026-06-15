@@ -50,3 +50,12 @@
 - 增加更多估计方法，例如 propensity score、matching、double robust。
 - 增加可视化和 PDF 报告。
 - 在稳定 MVP 之后再引入 LangGraph 或 LLM 做更智能的编排和解释。
+
+## 7. LLM 变量推荐为什么不直接进入主流程？
+
+回答要点：
+
+- LLM 只适合做辅助建议，不能替代因果识别假设。
+- 推荐结果必须经过字段校验，只能使用当前数据集中存在的列。
+- 用户必须手动确认或修改变量，系统不会因为 LLM 推荐而自动运行因果分析。
+- 没有 API key、请求失败或返回非法 JSON 时，功能会 skipped/fallback，不影响 deterministic MVP。

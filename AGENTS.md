@@ -41,6 +41,7 @@ Current project status:
 - Do not delete old files unless the user explicitly approves it.
 - Do not force-install EconML or move it into the base requirements.
 - Do not enable DeepSeek / LLM reporting by default.
+- Do not make LLM-assisted variable recommendation part of the required deterministic MVP flow.
 - Do not integrate the OpenAI API unless the user explicitly requests it.
 - Do not integrate LangGraph unless the user explicitly requests it.
 - Do not add a database, login system, or deployment configuration unless the user explicitly requests it.
@@ -88,6 +89,7 @@ python -m py_compile app/ui_streamlit.py
 
 - CATE optional skip must not break the main ATE, Reviewer, and Reporter pipeline.
 - DeepSeek is optional and must not be required for MVP tests.
+- LLM-assisted variable recommendation is optional and must gracefully skip or fallback when API access or JSON parsing fails.
 - DoWhy can fall back when unavailable, but fallback behavior must include a warning.
 - Keep `requirements-cate.txt` separate from base dependencies.
 
@@ -101,5 +103,5 @@ A change is done only when:
 - no unnecessary dependency is introduced.
 - no MVP feature is broken.
 - optional EconML and DeepSeek paths remain optional.
+- optional LLM variable recommendation never blocks manual variable selection or causal analysis.
 - sensitive local files such as `.env` are not read or exposed.
-

@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.core.orchestrator import AnalyticsTeamOrchestrator
 from app.core.schemas import AnalysisRequest
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
+from app.services.variable_recommender import VariableRecommendation, recommend_variables
 
 
 DEFAULT_DATASET = Path("data/sample_marketing.csv")
@@ -71,6 +72,36 @@ def _show_cate_status(status: str) -> None:
         st.warning(label)
 
 
+def _build_variable_profile(df: pd.DataFrame) -> dict[str, Any]:
+    return {
+        "n_rows": int(len(df)),
+        "columns": [
+            {
+                "name": column,
+                "dtype": str(dtype),
+                "missing_rate": float(df[column].isna().mean()),
+            }
+            for column, dtype in df.dtypes.items()
+        ],
+    }
+
+
+def _apply_recommendation(recommendation: VariableRecommendation) -> None:
+    if recommendation.treatment:
+        st.session_state["selected_treatment"] = recommendation.treatment
+    if recommendation.outcome:
+        st.session_state["selected_outcome"] = recommendation.outcome
+    st.session_state["selected_confounders"] = recommendation.confounders
+    st.session_state["selected_effect_modifiers"] = recommendation.effect_modifiers
+
+
+def _selector_index(columns: list[str], session_key: str, fallback: str) -> int:
+    value = st.session_state.get(session_key, fallback)
+    if value in columns:
+        return columns.index(value)
+    return _default_index(columns, fallback)
+
+
 st.set_page_config(page_title="Multi-Agent Causal Analytics Team", layout="wide")
 st.title("Multi-Agent Causal Analytics Team")
 st.caption("一个用于因果分析的多 Agent 数据分析团队")
@@ -107,28 +138,66 @@ if df is not None:
     st.dataframe(df.head(20), use_container_width=True)
 
     question = st.text_input(
-        "分析问题",
+        "自然语言分析问题",
         value="优惠券是否提升购买概率？",
+        key="analysis_question",
     )
+
+    with st.expander("LLM-assisted Variable Recommendation", expanded=False):
+        st.caption(
+            "可选功能，默认关闭。只有点击推荐按钮时才会调用 DeepSeek；没有 API key 或推荐失败时，手动变量选择仍然可用。"
+        )
+        if st.button("Recommend variables with LLM"):
+            recommendation = recommend_variables(
+                question=question,
+                columns=columns,
+                profile=_build_variable_profile(df),
+            )
+            st.session_state["variable_recommendation"] = recommendation.to_dict()
+
+        recommendation_payload = st.session_state.get("variable_recommendation")
+        if recommendation_payload:
+            recommendation = VariableRecommendation(**recommendation_payload)
+            st.json(recommendation.to_dict())
+            if recommendation.warnings:
+                for warning in recommendation.warnings:
+                    st.warning(warning)
+            if recommendation.status == "ok":
+                st.success("LLM 已生成变量推荐。你可以应用推荐，也可以继续手动选择。")
+            elif recommendation.status == "skipped":
+                st.info("LLM 变量推荐已跳过。你仍然可以手动选择变量。")
+            elif recommendation.status == "fallback":
+                st.warning("LLM 返回格式不可用，已保留手动变量选择。")
+            else:
+                st.error("LLM 变量推荐失败，已保留手动变量选择。")
+
+            if st.button("Apply recommendation to current selectors"):
+                _apply_recommendation(recommendation)
+                st.success("已将可用推荐应用到当前变量选择。你仍然可以继续手动修改。")
+
     treatment = st.selectbox(
         "处理变量 Treatment",
         columns,
-        index=_default_index(columns, "coupon"),
+        index=_selector_index(columns, "selected_treatment", "coupon"),
+        key="selected_treatment",
     )
     outcome = st.selectbox(
         "结果变量 Outcome",
         columns,
-        index=_default_index(columns, "purchase"),
+        index=_selector_index(columns, "selected_outcome", "purchase"),
+        key="selected_outcome",
     )
     confounders = st.multiselect(
         "混杂变量 Confounders",
         columns,
         default=_default_confounders(columns),
+        key="selected_confounders",
     )
     effect_modifiers = st.multiselect(
         "效应修饰变量 Effect modifiers",
         columns,
         default=["visits"] if "visits" in columns else [],
+        key="selected_effect_modifiers",
     )
     use_llm_report = st.checkbox(
         "可选：启用 DeepSeek 报告增强（不属于 MVP 验收条件）",
