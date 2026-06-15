@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=1.26
+pydantic>=2.8
+streamlit>=1.46
+pytest>=8.3
+openpyxl>=3.1

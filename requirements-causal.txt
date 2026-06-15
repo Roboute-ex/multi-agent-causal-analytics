@@ -1,0 +1,5 @@
+# 可选依赖：用于正式启用 DoWhy 因果识别、ATE 估计和 refutation API。
+# 不安装该文件时，应用仍会使用降级估计器运行。
+dowhy>=0.13
+pydot>=3.0
+networkx>=3.4
