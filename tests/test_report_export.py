@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.report import build_markdown_report
+from app.core.report import build_data_quality_markdown, build_markdown_report
 from app.core.report_export import build_html_report
 from app.core.schemas import (
     AgentResult,
@@ -80,6 +80,48 @@ def _sample_bundle(question: str = "优惠券是否提升购买率？") -> Pipel
     )
 
 
+def _sample_data_quality() -> dict:
+    return {
+        "status": "warning",
+        "summary": {
+            "row_count": 120,
+            "column_count": 5,
+            "overall_missing_rate": 0.02,
+            "duplicate_rows_count": 1,
+            "duplicate_rate": 1 / 120,
+            "high_missingness_columns": ["<script>bad_column</script>"],
+        },
+        "warnings": ["Check <script>alert('x')</script> before interpretation."],
+        "column_quality": [],
+        "treatment_quality": {
+            "column": "coupon",
+            "exists": True,
+            "missing_rate": 0.0,
+            "has_variation": True,
+            "group_counts": {"0": 60, "1": 60},
+            "imbalance_warning": False,
+        },
+        "outcome_quality": {
+            "column": "purchase",
+            "exists": True,
+            "missing_rate": 0.05,
+            "has_variation": True,
+        },
+        "selected_variables_quality": {
+            "selected_variables": ["coupon", "purchase", "age"],
+            "missing_columns": [],
+            "selected_missingness": {
+                "coupon": {"missing_count": 0, "missing_rate": 0.0},
+                "purchase": {"missing_count": 6, "missing_rate": 0.05},
+                "age": {"missing_count": 2, "missing_rate": 0.0167},
+            },
+            "selected_complete_case_count": 112,
+            "selected_complete_case_rate": 112 / 120,
+        },
+        "recommendations": ["Review selected variable missingness."],
+    }
+
+
 def test_markdown_report_still_generates():
     markdown = build_markdown_report(_sample_bundle())
 
@@ -107,3 +149,41 @@ def test_html_report_escapes_special_characters():
 
     assert "<script>alert" not in html
     assert "&lt;script&gt;alert" in html
+
+
+def test_html_report_with_data_quality_contains_summary():
+    html = build_html_report(_sample_bundle(), data_quality=_sample_data_quality())
+
+    assert "Data Quality Summary" in html
+    assert "Missingness Overview" in html
+    assert "Treatment Balance" in html
+    assert "Outcome Quality" in html
+    assert "Selected Variables Quality" in html
+    assert "Causal Readiness Warnings" in html
+    assert "<script>bad_column</script>" not in html
+    assert "&lt;script&gt;bad_column&lt;/script&gt;" in html
+
+
+def test_html_report_without_data_quality_keeps_previous_behavior():
+    html = build_html_report(_sample_bundle(), data_quality=None)
+
+    assert "Multi-Agent Causal Analytics Team Report" in html
+    assert "Data Quality Summary" not in html
+
+
+def test_markdown_data_quality_helper_contains_summary():
+    markdown = build_data_quality_markdown(_sample_data_quality())
+
+    assert "Data Quality Summary" in markdown
+    assert "Missingness Overview" in markdown
+    assert "Treatment Balance" in markdown
+    assert "Causal Readiness Warnings" in markdown
+
+
+def test_markdown_data_quality_helper_handles_empty_warnings():
+    data_quality = _sample_data_quality()
+    data_quality["warnings"] = []
+
+    markdown = build_data_quality_markdown(data_quality)
+
+    assert "No major data quality warnings." in markdown

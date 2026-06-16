@@ -6,7 +6,7 @@ from typing import Any, Iterable
 from app.core.schemas import PipelineBundle
 
 
-def build_html_report(bundle: PipelineBundle) -> str:
+def build_html_report(bundle: PipelineBundle, data_quality: dict[str, Any] | None = None) -> str:
     """Build a self-contained HTML report from a finished PipelineBundle."""
     request = bundle.request
     profile = bundle.profile
@@ -47,6 +47,9 @@ def build_html_report(bundle: PipelineBundle) -> str:
                 ),
             )
         )
+
+    if data_quality:
+        sections.append(_data_quality_section(data_quality))
 
     if method:
         method_body = _definition_list(
@@ -179,6 +182,72 @@ def _key_value_table(title: str, payload: dict[str, Any]) -> str:
     return f"<h3>{_e(title)}</h3><table>{rows}</table>"
 
 
+def _data_quality_section(data_quality: dict[str, Any]) -> str:
+    summary = data_quality.get("summary", {})
+    treatment_quality = data_quality.get("treatment_quality", {})
+    outcome_quality = data_quality.get("outcome_quality", {})
+    selected_quality = data_quality.get("selected_variables_quality", {})
+    selected_missingness = selected_quality.get("selected_missingness", {})
+    warnings = data_quality.get("warnings", [])
+    recommendations = data_quality.get("recommendations", [])
+
+    body = _definition_list(
+        [
+            ("Status", data_quality.get("status", "unknown")),
+            ("Rows", summary.get("row_count", 0)),
+            ("Columns", summary.get("column_count", 0)),
+            ("Duplicate rows", summary.get("duplicate_rows_count", 0)),
+            ("Duplicate rate", _format_rate(summary.get("duplicate_rate"))),
+            ("Overall missing rate", _format_rate(summary.get("overall_missing_rate"))),
+        ]
+    )
+    body += "<h3>Missingness Overview</h3>"
+    body += _definition_list(
+        [
+            (
+                "High-missingness columns",
+                _join_or_none(summary.get("high_missingness_columns", [])),
+            ),
+            (
+                "Selected variable missingness",
+                _format_selected_missingness(selected_missingness),
+            ),
+        ]
+    )
+    body += "<h3>Treatment Balance</h3>"
+    body += _definition_list(
+        [
+            ("Treatment exists", treatment_quality.get("exists", False)),
+            ("Treatment has variation", treatment_quality.get("has_variation")),
+            ("Treatment missing rate", _format_rate(treatment_quality.get("missing_rate"))),
+            ("Treatment group counts", _format_mapping(treatment_quality.get("group_counts", {}))),
+            ("Imbalance warning", treatment_quality.get("imbalance_warning", False)),
+        ]
+    )
+    body += "<h3>Outcome Quality</h3>"
+    body += _definition_list(
+        [
+            ("Outcome exists", outcome_quality.get("exists", False)),
+            ("Outcome has variation", outcome_quality.get("has_variation")),
+            ("Outcome missing rate", _format_rate(outcome_quality.get("missing_rate"))),
+        ]
+    )
+    body += "<h3>Selected Variables Quality</h3>"
+    body += _definition_list(
+        [
+            ("Selected variables", _join_or_none(selected_quality.get("selected_variables", []))),
+            ("Missing selected columns", _join_or_none(selected_quality.get("missing_columns", []))),
+            ("Complete-case rows", selected_quality.get("selected_complete_case_count", 0)),
+            ("Complete-case rate", _format_rate(selected_quality.get("selected_complete_case_rate"))),
+        ]
+    )
+    body += "<h3>Causal Readiness Warnings</h3>"
+    body += _list_or_message(warnings, "No major data quality warnings.")
+    if recommendations:
+        body += _list_block("Data Quality Recommendations", recommendations)
+    return _section("Data Quality Summary", body)
+
+
 def _refutations_table(refutations: dict[str, Any]) -> str:
     if not refutations:
         return "<p>No refutation results available.</p>"
@@ -256,6 +325,43 @@ def _format_interval(values: list[float] | None) -> str:
     if not values or len(values) < 2:
         return "N/A"
     return f"[{_format_number(values[0])}, {_format_number(values[1])}]"
+
+
+def _format_rate(value: Any) -> str:
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value):.1%}"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def _format_mapping(payload: dict[str, Any]) -> str:
+    if not payload:
+        return "None"
+    return ", ".join(f"{key}: {value}" for key, value in payload.items())
+
+
+def _format_selected_missingness(payload: dict[str, Any]) -> str:
+    if not payload:
+        return "None"
+    parts = []
+    for column, values in payload.items():
+        if isinstance(values, dict):
+            parts.append(
+                f"{column}: {values.get('missing_count', 0)} "
+                f"({_format_rate(values.get('missing_rate'))})"
+            )
+        else:
+            parts.append(f"{column}: {values}")
+    return "; ".join(parts)
+
+
+def _list_or_message(items: Iterable[Any], message: str) -> str:
+    values = [item for item in items if item]
+    if not values:
+        return f"<p>{_e(message)}</p>"
+    return "<ul>" + "".join(f"<li>{_e(item)}</li>" for item in values) + "</ul>"
 
 
 def _style_block() -> str:

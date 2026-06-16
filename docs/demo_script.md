@@ -16,12 +16,13 @@
 
 30-45 秒：
 
-展示变量配置：
+展示变量配置和 Data Quality Summary：
 
 - Treatment: `coupon`
 - Outcome: `purchase`
 - Confounders: `age`, `income`, `prior_spend`, `visits`
 - Effect Modifier: `visits`
+- Data Quality: 行数、列数、缺失率、重复行、warning count、selected complete-case count
 
 45-65 秒：
 
@@ -33,4 +34,4 @@
 
 80-90 秒：
 
-下载 Markdown 或 HTML 报告，强调项目亮点：职责清晰的 Agent 流程、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+下载 Markdown 或 HTML 报告，强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。

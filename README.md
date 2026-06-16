@@ -2,12 +2,13 @@
 
 这是一个适合统计学学生简历展示的本地因果分析项目。项目把一次结构化数据分析拆成多个职责明确的 Agent：先做数据画像和方法判断，再用 DoWhy 估计 ATE，使用 refutation 做稳健性检查，并在 EconML 可用时补充 CATE 异质性分析，最后生成 Markdown 报告。
 
-当前版本聚焦第一阶段 MVP：稳定、本地、可测试、可演示。不依赖 LangGraph、OpenAI API、数据库、登录系统或部署平台。DeepSeek / LLM 报告增强是可选能力，默认关闭，不影响主流程验收。
+当前版本聚焦稳定、本地、可测试、可演示的 GitHub 展示版。不依赖 LangGraph、OpenAI API、数据库、登录系统或部署平台。DeepSeek / LLM 报告增强是可选能力，默认关闭，不影响主流程验收。v0.4 增加了轻量 Data Quality Checks 和 Streamlit 内置图表展示，用于在因果分析前发现数据风险。
 
 ## MVP 功能
 
 - 上传 `.csv`、`.xlsx`、`.xls`、`.xlsm` 文件，或直接使用内置营销样例数据
 - 选择 Treatment、Outcome、Confounders、Effect Modifiers
+- 在运行因果分析前展示 Data Quality Summary，包括缺失率、重复行、常量列、高基数分类列、treatment balance、outcome quality 和 selected complete-case count
 - Data Engineer Agent 生成数据画像
 - Statistician Agent 给出因果分析方法建议和风险提示
 - Causal Agent 使用 DoWhy 估计 ATE
@@ -16,8 +17,8 @@
 - Heterogeneity Agent 可选使用 EconML 估计 CATE
 - EconML 不可用时 CATE 返回 `skipped`，主流程继续运行
 - Reporter Agent 生成 `Multi-Agent Causal Analytics Team Report`
-- Streamlit 前端展示 ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown / HTML 下载
-- pytest 覆盖端到端 pipeline、Excel/CSV 数据读取、CATE optional skip 和 refutation 结构
+- Streamlit 前端展示 Data Quality、ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown / HTML 下载
+- pytest 覆盖端到端 pipeline、Excel/CSV 数据读取、Data Quality、CATE optional skip、refutation 结构和报告导出
 
 ## 可选功能：LLM-assisted Variable Recommendation
 
@@ -47,7 +48,8 @@
 
 ```mermaid
 flowchart LR
-    User["User / Streamlit UI"] --> Data["Data Engineer"]
+    User["User / Streamlit UI"] --> Quality["Data Quality Checks"]
+    Quality --> Data["Data Engineer"]
     Data --> Stat["Statistician"]
     Stat --> Causal["Causal Agent"]
     Causal --> Hetero["Heterogeneity Agent"]
@@ -59,6 +61,7 @@ flowchart LR
     Hetero -.-> CATE["Optional EconML CATE"]
     Review -.-> Refute["Refutation Checks"]
     Report -.-> Markdown["Markdown Report"]
+    Report -.-> HTML["HTML Export"]
 ```
 
 ## 目录结构
@@ -76,6 +79,7 @@ app/
     schemas.py                 # 请求和结果结构
   services/
     data_loader.py             # CSV / Excel 读取
+    data_quality.py            # 数据质量检查和因果分析前诊断
     profile_service.py         # 数据画像
     method_service.py          # 方法选择
     causal_dowhy.py            # DoWhy ATE 与 fallback
@@ -90,6 +94,7 @@ tests/
   test_cate_optional_skip.py
   test_refutations.py
   test_report_export.py
+  test_data_quality.py
 requirements.txt
 requirements-causal.txt
 requirements-cate.txt
@@ -155,7 +160,7 @@ http://localhost:8501
 ![Streamlit demo](docs/images/streamlit-demo.png)
 ```
 
-截图建议包含：项目介绍区、Treatment / Outcome 配置、ATE metric、CATE 状态、refutation 表格和 Markdown 报告下载按钮。
+截图建议包含：项目介绍区、Treatment / Outcome 配置、Data Quality Summary、ATE metric、CATE 状态、refutation 表格和 Markdown / HTML 报告下载按钮。
 
 ## 样例数据说明
 
@@ -167,6 +172,22 @@ http://localhost:8501
 - Effect Modifier：`visits`
 
 样例数据故意设置了访问次数更高的用户对优惠券反应更强，因此安装 EconML 后，CATE 分组摘要通常能看到高访问组的处理效应更高。
+
+## Data Quality Checks
+
+v0.4 在运行因果分析前增加独立的数据质量检查，不改变 ATE、CATE 或 refutation 的计算逻辑。检查结果使用普通 dict 返回，并在 Streamlit、Markdown 报告和 HTML 报告中展示。
+
+当前检查包括：
+
+- 基础信息：行数、列数、字段类型分布
+- 缺失率：每列 missing count / missing rate、overall missing rate、高缺失字段 warning
+- 重复行、常量列、高基数分类字段
+- 数值字段 summary 和简单 IQR outlier count
+- Treatment 是否存在、分组计数、是否有变化、是否严重不平衡
+- Outcome 是否存在、是否有变化、missing rate
+- 已选变量 missingness、selected complete-case count 和 confounder missingness warning
+
+这些结果只用于分析前诊断和报告展示，不参与因果效应估计。
 
 ## 可选依赖说明
 
@@ -184,8 +205,8 @@ LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。
 
 当前支持两种下载格式：
 
-- Markdown：保留原有轻量文本报告，便于复制到 README、笔记或 Issue。
-- HTML：基于同一个 `PipelineBundle` 生成展示型报告，包含变量配置、数据画像、方法选择、ATE、CATE 状态、refutation、Reviewer warnings、Agent logs 和局限性说明。
+- Markdown：保留原有轻量文本报告，便于复制到 README、笔记或 Issue；在 Streamlit 下载时会附加 Data Quality Summary。
+- HTML：基于同一个 `PipelineBundle` 生成展示型报告，包含变量配置、数据画像、Data Quality Summary、方法选择、ATE、CATE 状态、refutation、Reviewer warnings、Agent logs 和局限性说明。
 
 HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 暂时不实现，未来可以作为 optional feature 规划。
 
@@ -196,14 +217,15 @@ HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 暂时不
 - 第一阶段不做自动因果发现
 - 第一阶段不做用户登录、数据库或部署
 - 当前 DAG 由用户选择的变量构造，因果假设需要分析者自己负责
+- Data Quality Checks 只做诊断和展示，不会自动清洗数据或自动修正因果设定
 - DeepSeek 报告增强是可选能力，默认关闭，不作为 MVP 验收条件
 - LLM 变量推荐只是辅助选择字段，不等同于自动因果发现，也不会证明因果识别成立
 
 ## 后续路线图
 
-- 增加更细的变量校验和数据清洗建议
+- 增加更细的数据清洗建议和异常处理策略
 - 增加更多估计方法选择，例如倾向得分、匹配、双重稳健估计
-- 增加图表和 optional PDF 报告导出
+- 增加更多图表和 optional PDF 报告导出
 - 将固定顺序编排升级为 LangGraph 工作流
 - 接入 LLM 做变量推荐、报告润色和人机协作解释
 - 增加更多真实公开数据集案例
@@ -214,9 +236,9 @@ HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 暂时不
 
 1. 0-15 秒：介绍项目目标：一个用于因果分析的多 Agent 数据分析团队。
 2. 15-30 秒：打开 Streamlit，使用内置营销样例数据。
-3. 30-45 秒：展示变量配置：Treatment=`coupon`、Outcome=`purchase`、Confounders 和 Effect Modifiers。
+3. 30-45 秒：展示变量配置和 Data Quality Summary：Treatment=`coupon`、Outcome=`purchase`、缺失率、重复行和 complete-case count。
 4. 45-65 秒：运行分析，展示 ATE metric、CATE 状态和 refutation 表格。
-5. 65-80 秒：展示 Reviewer warnings、Agent 日志和 Markdown / HTML 报告下载。
+5. 65-80 秒：展示 Reviewer warnings、Agent 日志和带 Data Quality Summary 的 Markdown / HTML 报告下载。
 6. 80-90 秒：强调工程亮点：可选依赖 graceful skip、pytest 端到端测试、GitHub 可复现。
 
 ## 面试问题与回答要点
@@ -229,16 +251,18 @@ HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 暂时不
   DoWhy 的流程天然对应建模、识别、估计和 refutation，适合展示因果推断方法论。
 - EconML 为什么是 optional？  
   EconML 依赖较重，CATE 属于增强能力；缺失时主流程仍应完成 ATE、Reviewer 和报告。
+- Data Quality Checks 是否会影响估计结果？  
+  不会。它是分析前诊断和展示层增强，只帮助用户发现缺失、重复、不平衡和 complete-case 风险。
 - 这个项目的因果结论可靠吗？  
   结果依赖用户指定的混杂变量和因果假设，Reviewer 只能做稳健性提示，不能自动证明因果识别成立。
 
 ## 简历描述示例
 
-Multi-Agent Causal Analytics Team MVP：设计并实现一个基于 Streamlit 的多 Agent 因果分析工具，支持 CSV/Excel 上传、数据画像、因果变量配置、DoWhy ATE 估计、三类 refutation 稳健性检查、可选 EconML CATE 异质性分析和 Markdown / HTML 报告导出；通过 pytest 覆盖端到端 pipeline、可选依赖降级路径和数据读取流程，展示统计建模、因果推断和 Python 工程化能力。
+Multi-Agent Causal Analytics Team MVP：设计并实现一个基于 Streamlit 的多 Agent 因果分析工具，支持 CSV/Excel 上传、数据质量检查、数据画像、因果变量配置、DoWhy ATE 估计、三类 refutation 稳健性检查、可选 EconML CATE 异质性分析和 Markdown / HTML 报告导出；通过 pytest 覆盖端到端 pipeline、可选依赖降级路径、数据读取和报告导出流程，展示统计建模、因果推断和 Python 工程化能力。
 
 ## 简历 Bullet Point
 
-- Built a Streamlit-based Multi-Agent Causal Analytics Team that supports CSV/Excel upload, data profiling, DoWhy ATE estimation, refutation checks, optional EconML CATE analysis, and Markdown/HTML report export.
+- Built a Streamlit-based Multi-Agent Causal Analytics Team that supports CSV/Excel upload, data quality checks, data profiling, DoWhy ATE estimation, refutation checks, optional EconML CATE analysis, and Markdown/HTML report export.
 - Designed a modular agent workflow covering Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter roles, with pytest coverage for end-to-end execution and optional dependency fallback paths.
 
 ## GitHub 上传提醒
