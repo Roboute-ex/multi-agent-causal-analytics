@@ -12,9 +12,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.orchestrator import AnalyticsTeamOrchestrator
+from app.core.report import build_data_quality_markdown
 from app.core.report_export import build_html_report
 from app.core.schemas import AnalysisRequest
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
+from app.services.data_quality import run_data_quality_checks
 from app.services.variable_recommender import VariableRecommendation, recommend_variables
 
 
@@ -103,6 +105,124 @@ def _selector_index(columns: list[str], session_key: str, fallback: str) -> int:
     return _default_index(columns, fallback)
 
 
+def _show_data_quality_summary(
+    data_quality: dict[str, Any],
+    df: pd.DataFrame,
+    treatment: str,
+    outcome: str,
+) -> None:
+    summary = data_quality.get("summary", {})
+    selected_quality = data_quality.get("selected_variables_quality", {})
+    warnings = data_quality.get("warnings", [])
+
+    with st.expander("Data Quality Summary", expanded=True):
+        status = data_quality.get("status", "unknown")
+        status_label = f"Data quality status: {status}"
+        if status == "ok":
+            st.success(status_label)
+        elif status == "warning":
+            st.warning(status_label)
+        else:
+            st.error(status_label)
+
+        metric_cols = st.columns(5)
+        metric_cols[0].metric("Rows", summary.get("row_count", 0))
+        metric_cols[1].metric("Columns", summary.get("column_count", 0))
+        metric_cols[2].metric("Duplicate rows", summary.get("duplicate_rows_count", 0))
+        metric_cols[3].metric("Warnings", len(warnings))
+        metric_cols[4].metric(
+            "Complete cases",
+            selected_quality.get("selected_complete_case_count", 0),
+        )
+
+        chart_cols = st.columns(2)
+        missing_rate_frame = _missing_rate_frame(data_quality)
+        with chart_cols[0]:
+            st.markdown("**Missing rate by column**")
+            if missing_rate_frame.empty:
+                st.info("No column missingness data available.")
+            else:
+                st.bar_chart(missing_rate_frame.set_index("column")["missing_rate"])
+
+        selected_missingness_frame = _selected_missingness_frame(data_quality)
+        with chart_cols[1]:
+            st.markdown("**Selected variables missingness**")
+            if selected_missingness_frame.empty:
+                st.info("No selected variable missingness data available.")
+            else:
+                st.bar_chart(selected_missingness_frame.set_index("column")["missing_rate"])
+
+        treatment_cols = st.columns(2)
+        treatment_counts_frame = _treatment_counts_frame(data_quality)
+        with treatment_cols[0]:
+            st.markdown("**Treatment group counts**")
+            if treatment_counts_frame.empty:
+                st.info("No treatment group count data available.")
+            else:
+                st.bar_chart(treatment_counts_frame.set_index("group")["count"])
+
+        outcome_frame = _outcome_by_treatment_frame(df, treatment, outcome)
+        with treatment_cols[1]:
+            st.markdown("**Outcome by treatment mean**")
+            if outcome_frame.empty:
+                outcome_quality = data_quality.get("outcome_quality", {})
+                st.json(outcome_quality)
+            else:
+                st.bar_chart(outcome_frame.set_index("treatment")["mean_outcome"])
+
+        if warnings:
+            st.markdown("**Data quality warnings**")
+            st.dataframe(pd.DataFrame({"warning": warnings}), use_container_width=True, hide_index=True)
+        else:
+            st.success("No major data quality warnings.")
+
+
+def _missing_rate_frame(data_quality: dict[str, Any]) -> pd.DataFrame:
+    rows = [
+        {
+            "column": str(item.get("column", "")),
+            "missing_rate": float(item.get("missing_rate") or 0.0),
+        }
+        for item in data_quality.get("column_quality", [])
+    ]
+    return pd.DataFrame(rows)
+
+
+def _selected_missingness_frame(data_quality: dict[str, Any]) -> pd.DataFrame:
+    selected_quality = data_quality.get("selected_variables_quality", {})
+    selected_missingness = selected_quality.get("selected_missingness", {})
+    rows = [
+        {
+            "column": str(column),
+            "missing_rate": float(payload.get("missing_rate") or 0.0),
+        }
+        for column, payload in selected_missingness.items()
+        if isinstance(payload, dict)
+    ]
+    return pd.DataFrame(rows)
+
+
+def _treatment_counts_frame(data_quality: dict[str, Any]) -> pd.DataFrame:
+    treatment_quality = data_quality.get("treatment_quality", {})
+    group_counts = treatment_quality.get("group_counts", {})
+    rows = [{"group": str(group), "count": int(count)} for group, count in group_counts.items()]
+    return pd.DataFrame(rows)
+
+
+def _outcome_by_treatment_frame(df: pd.DataFrame, treatment: str, outcome: str) -> pd.DataFrame:
+    if treatment not in df.columns or outcome not in df.columns:
+        return pd.DataFrame()
+    frame = pd.DataFrame(
+        {
+            "treatment": df[treatment].astype(str),
+            "outcome": pd.to_numeric(df[outcome], errors="coerce"),
+        }
+    ).dropna(subset=["outcome"])
+    if frame.empty:
+        return pd.DataFrame()
+    return frame.groupby("treatment", dropna=False)["outcome"].mean().reset_index(name="mean_outcome")
+
+
 st.set_page_config(page_title="Multi-Agent Causal Analytics Team", layout="wide")
 st.title("Multi-Agent Causal Analytics Team")
 st.caption("一个用于因果分析的多 Agent 数据分析团队")
@@ -137,6 +257,10 @@ else:
 if df is not None:
     columns = df.columns.tolist()
     st.dataframe(df.head(20), use_container_width=True)
+    if not columns:
+        data_quality = run_data_quality_checks(df)
+        _show_data_quality_summary(data_quality, df, "", "")
+        st.stop()
 
     question = st.text_input(
         "自然语言分析问题",
@@ -200,6 +324,15 @@ if df is not None:
         default=["visits"] if "visits" in columns else [],
         key="selected_effect_modifiers",
     )
+    data_quality = run_data_quality_checks(
+        df,
+        treatment=treatment,
+        outcome=outcome,
+        confounders=confounders,
+        effect_modifiers=effect_modifiers,
+    )
+    _show_data_quality_summary(data_quality, df, treatment, outcome)
+
     use_llm_report = st.checkbox(
         "可选：启用 DeepSeek 报告增强（不属于 MVP 验收条件）",
         value=False,
@@ -249,19 +382,27 @@ if df is not None:
         )
 
         with tab_report:
-            st.markdown(bundle.report_markdown or "")
+            report_markdown = bundle.report_markdown or ""
+            data_quality_markdown = build_data_quality_markdown(data_quality)
+            if data_quality_markdown:
+                report_markdown = (
+                    f"{report_markdown}\n{data_quality_markdown}"
+                    if report_markdown
+                    else data_quality_markdown
+                )
+            st.markdown(report_markdown)
             download_cols = st.columns(2)
             with download_cols[0]:
                 st.download_button(
                     "下载 Markdown 报告",
-                    data=bundle.report_markdown or "",
+                    data=report_markdown,
                     file_name="multi_agent_causal_report.md",
                     mime="text/markdown",
                 )
             with download_cols[1]:
                 st.download_button(
                     "下载 HTML 报告",
-                    data=build_html_report(bundle),
+                    data=build_html_report(bundle, data_quality=data_quality),
                     file_name="multi_agent_causal_report.html",
                     mime="text/html",
                 )

@@ -68,3 +68,12 @@
 - HTML 报告不改变 ATE、CATE、refutation 或 Reviewer 的计算结果。
 - 使用标准库生成 HTML，避免新增强制依赖。
 - PDF 导出依赖更复杂，当前只作为未来 optional feature。
+
+## 9. Data Quality Checks 为什么不直接影响因果估计？
+
+回答要点：
+
+- Data Quality 是分析前诊断和展示层增强，负责暴露缺失、重复、常量列、高基数分类列和 treatment imbalance 等风险。
+- ATE、CATE 和 refutation 仍然由原有 deterministic pipeline 计算，避免因为展示层检查改变模型结果。
+- 这样可以保持 v0.1/v0.2/v0.3 主流程稳定，同时让用户在解释结果前看到数据风险。
+- 如果未来要做自动清洗或样本过滤，应作为单独功能显式设计，并保留用户确认步骤。

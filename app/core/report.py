@@ -1,6 +1,83 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.core.schemas import PipelineBundle
+
+
+def build_data_quality_markdown(data_quality: dict[str, Any] | None) -> str:
+    if not data_quality:
+        return ""
+
+    summary = data_quality.get("summary", {})
+    treatment_quality = data_quality.get("treatment_quality", {})
+    outcome_quality = data_quality.get("outcome_quality", {})
+    selected_quality = data_quality.get("selected_variables_quality", {})
+    warnings = data_quality.get("warnings", [])
+    recommendations = data_quality.get("recommendations", [])
+    high_missingness_columns = summary.get("high_missingness_columns", [])
+    selected_missingness = selected_quality.get("selected_missingness", {})
+
+    lines = [
+        "",
+        "## Data Quality Summary",
+        f"- Status: `{data_quality.get('status', 'unknown')}`",
+        f"- Rows: {summary.get('row_count', 0)}",
+        f"- Columns: {summary.get('column_count', 0)}",
+        f"- Overall missing rate: {_format_rate(summary.get('overall_missing_rate'))}",
+        f"- Duplicate rows: {summary.get('duplicate_rows_count', 0)} "
+        f"({_format_rate(summary.get('duplicate_rate'))})",
+        "",
+        "### Missingness Overview",
+        f"- High-missingness columns: {_join_or_none(high_missingness_columns)}",
+        "",
+    ]
+
+    if selected_missingness:
+        lines.append("- Selected variable missingness:")
+        for column, payload in selected_missingness.items():
+            lines.append(
+                f"  - `{column}`: {payload.get('missing_count', 0)} missing "
+                f"({_format_rate(payload.get('missing_rate'))})"
+            )
+    else:
+        lines.append("- Selected variable missingness: None available")
+
+    lines.extend(
+        [
+            "",
+            "### Treatment Balance",
+            f"- Treatment exists: {treatment_quality.get('exists', False)}",
+            f"- Treatment has variation: {treatment_quality.get('has_variation')}",
+            f"- Treatment missing rate: {_format_rate(treatment_quality.get('missing_rate'))}",
+            f"- Treatment group counts: {_format_mapping(treatment_quality.get('group_counts', {}))}",
+            "",
+            "### Outcome Quality",
+            f"- Outcome exists: {outcome_quality.get('exists', False)}",
+            f"- Outcome has variation: {outcome_quality.get('has_variation')}",
+            f"- Outcome missing rate: {_format_rate(outcome_quality.get('missing_rate'))}",
+            "",
+            "### Selected Variables Quality",
+            f"- Selected variables: {_join_or_none(selected_quality.get('selected_variables', []))}",
+            f"- Missing selected columns: {_join_or_none(selected_quality.get('missing_columns', []))}",
+            f"- Complete-case rows: {selected_quality.get('selected_complete_case_count', 0)} "
+            f"({_format_rate(selected_quality.get('selected_complete_case_rate'))})",
+            "",
+            "### Causal Readiness Warnings",
+        ]
+    )
+
+    if warnings:
+        lines.extend(f"- {warning}" for warning in warnings)
+    else:
+        lines.append("- No major data quality warnings.")
+
+    if recommendations:
+        lines.extend(["", "### Data Quality Recommendations"])
+        lines.extend(f"- {item}" for item in recommendations)
+
+    lines.append("")
+    return "\n".join(lines)
 
 
 def build_markdown_report(bundle: PipelineBundle) -> str:
@@ -137,3 +214,22 @@ def build_markdown_report(bundle: PipelineBundle) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _format_rate(value: Any) -> str:
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value):.1%}"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def _join_or_none(values: list[Any]) -> str:
+    return ", ".join(str(value) for value in values) if values else "None"
+
+
+def _format_mapping(payload: dict[str, Any]) -> str:
+    if not payload:
+        return "None"
+    return ", ".join(f"{key}: {value}" for key, value in payload.items())

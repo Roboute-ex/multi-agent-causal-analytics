@@ -10,6 +10,7 @@ This repository is a local, GitHub-ready MVP for a multi-agent causal analytics 
 - method selection
 - ATE estimation
 - optional CATE analysis with graceful skip
+- data quality checks before causal analysis
 - refutation checks
 - Reviewer Agent validation
 - Markdown report generation
@@ -18,7 +19,7 @@ Current project status:
 
 - Phase 1 MVP is complete.
 - Phase 2 presentation enhancement is complete.
-- The latest pytest result was `7 passed`.
+- The latest full pytest result should be checked after each change; v0.4 adds data quality and report export tests.
 - Streamlit can be accessed locally.
 - The current priority is stability, GitHub presentation quality, and resume presentation quality.
 
@@ -30,6 +31,7 @@ Current project status:
 - `app/core/report.py`: local Markdown report generation.
 - `app/core/report_export.py`: local HTML report export generated after the pipeline finishes.
 - `app/agents/team.py`: core agents, including Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter.
+- `app/services/data_quality.py`: lightweight data quality checks returned as a plain dict for UI/report display.
 - `app/services/causal_dowhy.py`: DoWhy ATE estimation and fallback linear adjustment logic.
 - `app/services/cate_econml.py`: optional EconML CATE analysis with graceful skip behavior.
 - `data/generate_synthetic.py`: synthetic marketing sample data generator.
@@ -50,6 +52,8 @@ Current project status:
 - Do not run `git push`.
 - Preserve the current MVP behavior before adding presentation or documentation improvements.
 - Keep report export as a presentation/download layer; do not make it part of the causal pipeline.
+- Keep data quality checks as pre-analysis diagnostics and report/UI display; do not make them change ATE/CATE/refutation computation.
+- Do not add matplotlib, seaborn, or plotly for v0.4-style lightweight charts; prefer pandas and Streamlit built-ins.
 - Prefer small, targeted edits that keep the existing repository layout intact.
 
 ## Commands
@@ -95,6 +99,7 @@ python -m py_compile app/ui_streamlit.py
 - DoWhy can fall back when unavailable, but fallback behavior must include a warning.
 - Keep `requirements-cate.txt` separate from base dependencies.
 - HTML report export must not introduce required dependencies; PDF export should remain optional unless explicitly requested.
+- Data Quality checks should return a plain dict unless the user explicitly asks for schema changes.
 
 ## Definition of Done
 
