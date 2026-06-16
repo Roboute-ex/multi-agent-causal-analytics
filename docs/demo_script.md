@@ -33,4 +33,4 @@
 
 80-90 秒：
 
-下载 Markdown 报告，强调项目亮点：职责清晰的 Agent 流程、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+下载 Markdown 或 HTML 报告，强调项目亮点：职责清晰的 Agent 流程、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
