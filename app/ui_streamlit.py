@@ -15,6 +15,11 @@ from app.core.orchestrator import AnalyticsTeamOrchestrator
 from app.core.report import build_data_quality_markdown
 from app.core.report_export import build_html_report
 from app.core.schemas import AnalysisRequest
+from app.graph.langgraph_runner import (
+    LangGraphUnavailableError,
+    is_langgraph_available,
+    run_langgraph_pipeline,
+)
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
 from app.services.data_quality import run_data_quality_checks
 from app.services.variable_recommender import VariableRecommendation, recommend_variables
@@ -338,6 +343,11 @@ if df is not None:
         value=False,
         help="默认关闭。需要在 .env 中配置 DEEPSEEK_API_KEY；未配置或调用失败时会自动保留本地 Markdown 报告。",
     )
+    use_langgraph = st.checkbox(
+        "Use experimental LangGraph orchestration",
+        value=False,
+        help="默认关闭。仅在已安装 requirements-langgraph.txt 时使用 LangGraph 编排现有 Agent；未安装时会自动回退到 deterministic orchestrator。",
+    )
 
     if st.button("运行 Multi-Agent 因果分析", type="primary"):
         request = AnalysisRequest(
@@ -349,7 +359,27 @@ if df is not None:
             effect_modifiers=effect_modifiers,
             use_llm_report=use_llm_report,
         )
-        bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
+        orchestration_mode = "deterministic"
+        if use_langgraph:
+            if is_langgraph_available():
+                try:
+                    bundle = run_langgraph_pipeline(request, df)
+                    orchestration_mode = "langgraph_experimental"
+                except LangGraphUnavailableError as exc:
+                    st.warning(f"LangGraph orchestration unavailable：{exc} 已回退到 deterministic orchestrator。")
+                    bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
+                    orchestration_mode = "deterministic_fallback_langgraph_unavailable"
+            else:
+                st.warning(
+                    "LangGraph 未安装，已回退到 deterministic orchestrator。"
+                    "如需启用，请安装 requirements-langgraph.txt。"
+                )
+                bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
+                orchestration_mode = "deterministic_fallback_langgraph_unavailable"
+        else:
+            bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
+
+        st.caption(f"Orchestration mode: `{orchestration_mode}`")
 
         if bundle.estimate and bundle.estimate.ate is not None:
             metric_cols = st.columns(3)

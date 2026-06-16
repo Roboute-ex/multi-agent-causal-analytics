@@ -26,7 +26,7 @@
 
 45-65 秒：
 
-点击运行分析，展示 ATE metric、估计方法、CATE 状态和 refutation 表格。强调 DoWhy 用于 ATE，EconML 是 optional。
+展示 `Use experimental LangGraph orchestration` 选项。说明默认关闭；未安装 LangGraph 时会自动回退到 deterministic orchestrator。点击运行分析，展示 ATE metric、估计方法、CATE 状态和 refutation 表格。强调 DoWhy 用于 ATE，EconML 和 LangGraph 都是 optional。
 
 65-80 秒：
 
@@ -34,4 +34,4 @@
 
 80-90 秒：
 
-下载 Markdown 或 HTML 报告，强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+下载 Markdown 或 HTML 报告，强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、optional LangGraph 编排层、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。

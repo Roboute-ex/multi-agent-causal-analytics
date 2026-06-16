@@ -77,3 +77,12 @@
 - ATE、CATE 和 refutation 仍然由原有 deterministic pipeline 计算，避免因为展示层检查改变模型结果。
 - 这样可以保持 v0.1/v0.2/v0.3 主流程稳定，同时让用户在解释结果前看到数据风险。
 - 如果未来要做自动清洗或样本过滤，应作为单独功能显式设计，并保留用户确认步骤。
+
+## 10. v0.5 为什么把 LangGraph 做成 optional adapter？
+
+回答要点：
+
+- 现有 deterministic orchestrator 已经稳定通过测试，所以 v0.5 不替换主流程。
+- LangGraph adapter 只负责编排现有 Agent 节点，输出仍然是 `PipelineBundle`。
+- 未安装 `langgraph` 时 UI 会 warning 并回退到 deterministic orchestrator，避免把实验能力变成强依赖。
+- v0.5 不做 checkpoint、persistence、human-in-the-loop、动态路由或 LLM planner，边界更清晰。
