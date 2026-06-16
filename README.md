@@ -16,7 +16,7 @@
 - Heterogeneity Agent 可选使用 EconML 估计 CATE
 - EconML 不可用时 CATE 返回 `skipped`，主流程继续运行
 - Reporter Agent 生成 `Multi-Agent Causal Analytics Team Report`
-- Streamlit 前端展示 ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown 下载
+- Streamlit 前端展示 ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown / HTML 下载
 - pytest 覆盖端到端 pipeline、Excel/CSV 数据读取、CATE optional skip 和 refutation 结构
 
 ## 可选功能：LLM-assisted Variable Recommendation
@@ -72,6 +72,7 @@ app/
   core/
     orchestrator.py            # 工作流编排器
     report.py                  # Markdown 报告生成
+    report_export.py           # HTML 报告导出
     schemas.py                 # 请求和结果结构
   services/
     data_loader.py             # CSV / Excel 读取
@@ -88,6 +89,7 @@ tests/
   test_data_loader.py
   test_cate_optional_skip.py
   test_refutations.py
+  test_report_export.py
 requirements.txt
 requirements-causal.txt
 requirements-cate.txt
@@ -178,6 +180,15 @@ DeepSeek / LLM 报告增强不在基础依赖中，也不是运行 MVP 的必要
 
 LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。未配置 `.env` 时变量推荐会安全跳过，不影响手动选择变量、ATE、CATE、Reviewer 或 Markdown 报告。
 
+## 报告导出
+
+当前支持两种下载格式：
+
+- Markdown：保留原有轻量文本报告，便于复制到 README、笔记或 Issue。
+- HTML：基于同一个 `PipelineBundle` 生成展示型报告，包含变量配置、数据画像、方法选择、ATE、CATE 状态、refutation、Reviewer warnings、Agent logs 和局限性说明。
+
+HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 暂时不实现，未来可以作为 optional feature 规划。
+
 ## 当前限制
 
 - 第一阶段不使用 LangGraph
@@ -192,7 +203,7 @@ LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。
 
 - 增加更细的变量校验和数据清洗建议
 - 增加更多估计方法选择，例如倾向得分、匹配、双重稳健估计
-- 增加图表和 PDF 报告导出
+- 增加图表和 optional PDF 报告导出
 - 将固定顺序编排升级为 LangGraph 工作流
 - 接入 LLM 做变量推荐、报告润色和人机协作解释
 - 增加更多真实公开数据集案例
@@ -205,7 +216,7 @@ LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。
 2. 15-30 秒：打开 Streamlit，使用内置营销样例数据。
 3. 30-45 秒：展示变量配置：Treatment=`coupon`、Outcome=`purchase`、Confounders 和 Effect Modifiers。
 4. 45-65 秒：运行分析，展示 ATE metric、CATE 状态和 refutation 表格。
-5. 65-80 秒：展示 Reviewer warnings、Agent 日志和 Markdown 报告。
+5. 65-80 秒：展示 Reviewer warnings、Agent 日志和 Markdown / HTML 报告下载。
 6. 80-90 秒：强调工程亮点：可选依赖 graceful skip、pytest 端到端测试、GitHub 可复现。
 
 ## 面试问题与回答要点
@@ -223,11 +234,11 @@ LLM-assisted Variable Recommendation 也使用同一套可选 DeepSeek 配置。
 
 ## 简历描述示例
 
-Multi-Agent Causal Analytics Team MVP：设计并实现一个基于 Streamlit 的多 Agent 因果分析工具，支持 CSV/Excel 上传、数据画像、因果变量配置、DoWhy ATE 估计、三类 refutation 稳健性检查、可选 EconML CATE 异质性分析和 Markdown 报告生成；通过 pytest 覆盖端到端 pipeline、可选依赖降级路径和数据读取流程，展示统计建模、因果推断和 Python 工程化能力。
+Multi-Agent Causal Analytics Team MVP：设计并实现一个基于 Streamlit 的多 Agent 因果分析工具，支持 CSV/Excel 上传、数据画像、因果变量配置、DoWhy ATE 估计、三类 refutation 稳健性检查、可选 EconML CATE 异质性分析和 Markdown / HTML 报告导出；通过 pytest 覆盖端到端 pipeline、可选依赖降级路径和数据读取流程，展示统计建模、因果推断和 Python 工程化能力。
 
 ## 简历 Bullet Point
 
-- Built a Streamlit-based Multi-Agent Causal Analytics Team that supports CSV/Excel upload, data profiling, DoWhy ATE estimation, refutation checks, optional EconML CATE analysis, and Markdown report generation.
+- Built a Streamlit-based Multi-Agent Causal Analytics Team that supports CSV/Excel upload, data profiling, DoWhy ATE estimation, refutation checks, optional EconML CATE analysis, and Markdown/HTML report export.
 - Designed a modular agent workflow covering Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter roles, with pytest coverage for end-to-end execution and optional dependency fallback paths.
 
 ## GitHub 上传提醒

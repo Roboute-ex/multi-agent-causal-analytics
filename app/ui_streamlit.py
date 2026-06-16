@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.orchestrator import AnalyticsTeamOrchestrator
+from app.core.report_export import build_html_report
 from app.core.schemas import AnalysisRequest
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
 from app.services.variable_recommender import VariableRecommendation, recommend_variables
@@ -249,12 +250,21 @@ if df is not None:
 
         with tab_report:
             st.markdown(bundle.report_markdown or "")
-            st.download_button(
-                "下载 Markdown 报告",
-                data=bundle.report_markdown or "",
-                file_name="multi_agent_causal_report.md",
-                mime="text/markdown",
-            )
+            download_cols = st.columns(2)
+            with download_cols[0]:
+                st.download_button(
+                    "下载 Markdown 报告",
+                    data=bundle.report_markdown or "",
+                    file_name="multi_agent_causal_report.md",
+                    mime="text/markdown",
+                )
+            with download_cols[1]:
+                st.download_button(
+                    "下载 HTML 报告",
+                    data=build_html_report(bundle),
+                    file_name="multi_agent_causal_report.html",
+                    mime="text/html",
+                )
 
         with tab_robustness:
             if bundle.estimate:

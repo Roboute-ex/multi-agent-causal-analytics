@@ -28,6 +28,7 @@ Current project status:
 - `app/core/orchestrator.py`: deterministic multi-agent pipeline orchestration.
 - `app/core/schemas.py`: Pydantic request/result schemas shared across agents and services.
 - `app/core/report.py`: local Markdown report generation.
+- `app/core/report_export.py`: local HTML report export generated after the pipeline finishes.
 - `app/agents/team.py`: core agents, including Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter.
 - `app/services/causal_dowhy.py`: DoWhy ATE estimation and fallback linear adjustment logic.
 - `app/services/cate_econml.py`: optional EconML CATE analysis with graceful skip behavior.
@@ -48,6 +49,7 @@ Current project status:
 - Do not read, print, upload, or commit `.env`.
 - Do not run `git push`.
 - Preserve the current MVP behavior before adding presentation or documentation improvements.
+- Keep report export as a presentation/download layer; do not make it part of the causal pipeline.
 - Prefer small, targeted edits that keep the existing repository layout intact.
 
 ## Commands
@@ -92,6 +94,7 @@ python -m py_compile app/ui_streamlit.py
 - LLM-assisted variable recommendation is optional and must gracefully skip or fallback when API access or JSON parsing fails.
 - DoWhy can fall back when unavailable, but fallback behavior must include a warning.
 - Keep `requirements-cate.txt` separate from base dependencies.
+- HTML report export must not introduce required dependencies; PDF export should remain optional unless explicitly requested.
 
 ## Definition of Done
 

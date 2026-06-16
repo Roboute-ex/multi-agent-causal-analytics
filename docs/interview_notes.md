@@ -48,7 +48,7 @@
 
 - 增加变量推荐和数据质量诊断。
 - 增加更多估计方法，例如 propensity score、matching、double robust。
-- 增加可视化和 PDF 报告。
+- 增加更多可视化，并把 PDF 报告作为 optional export。
 - 在稳定 MVP 之后再引入 LangGraph 或 LLM 做更智能的编排和解释。
 
 ## 7. LLM 变量推荐为什么不直接进入主流程？
@@ -59,3 +59,12 @@
 - 推荐结果必须经过字段校验，只能使用当前数据集中存在的列。
 - 用户必须手动确认或修改变量，系统不会因为 LLM 推荐而自动运行因果分析。
 - 没有 API key、请求失败或返回非法 JSON 时，功能会 skipped/fallback，不影响 deterministic MVP。
+
+## 8. HTML 报告导出为什么不放进核心 pipeline？
+
+回答要点：
+
+- 报告导出是展示层能力，只应在 pipeline 运行完成后读取 `PipelineBundle`。
+- HTML 报告不改变 ATE、CATE、refutation 或 Reviewer 的计算结果。
+- 使用标准库生成 HTML，避免新增强制依赖。
+- PDF 导出依赖更复杂，当前只作为未来 optional feature。
