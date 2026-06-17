@@ -13,6 +13,7 @@ This repository is a local, GitHub-ready MVP for a multi-agent causal analytics 
 - data quality checks before causal analysis
 - optional LangGraph orchestration adapter with graceful fallback
 - polished HTML and optional PDF report export
+- deployment readiness and public demo safety messaging
 - refutation checks
 - Reviewer Agent validation
 - Markdown report generation
@@ -21,7 +22,7 @@ Current project status:
 
 - Phase 1 MVP is complete.
 - Phase 2 presentation enhancement is complete.
-- The latest full pytest result should be checked after each change; v0.6 adds optional PDF export tests.
+- The latest full pytest result should be checked after each change; v0.7 focuses on Advanced LangGraph Orchestration and retains deployment readiness as a transitional enhancement.
 - Streamlit can be accessed locally.
 - The current priority is stability, GitHub presentation quality, and resume presentation quality.
 
@@ -36,6 +37,7 @@ Current project status:
 - `app/graph/langgraph_runner.py`: optional LangGraph experimental orchestration adapter.
 - `app/agents/team.py`: core agents, including Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter.
 - `app/services/data_quality.py`: lightweight data quality checks returned as a plain dict for UI/report display.
+- `app/services/dependency_status.py`: deployment-safe optional dependency and API configuration status.
 - `app/services/causal_dowhy.py`: DoWhy ATE estimation and fallback linear adjustment logic.
 - `app/services/cate_econml.py`: optional EconML CATE analysis with graceful skip behavior.
 - `data/generate_synthetic.py`: synthetic marketing sample data generator.
@@ -52,9 +54,12 @@ Current project status:
 - Do not integrate the OpenAI API unless the user explicitly requests it.
 - Keep LangGraph optional and experimental; do not replace `app/core/orchestrator.py`.
 - Do not move LangGraph into base requirements.
+- Keep LangGraph trace/state summary as plain dict metadata; do not add Pydantic schemas for it unless explicitly requested.
 - Keep ReportLab PDF export optional; do not move it into base requirements.
 - Do not add a database, login system, or deployment configuration unless the user explicitly requests it.
 - Do not read, print, upload, or commit `.env`.
+- Do not commit `.streamlit/secrets.toml`.
+- Do not commit private data under `data/raw/`, `data/prepared/`, or local `scripts/`.
 - Do not run `git push`.
 - Preserve the current MVP behavior before adding presentation or documentation improvements.
 - Keep report export as a presentation/download layer; do not make it part of the causal pipeline.
@@ -62,6 +67,8 @@ Current project status:
 - Keep data quality checks as pre-analysis diagnostics and report/UI display; do not make them change ATE/CATE/refutation computation.
 - Keep LangGraph as orchestration only; do not add new statistical estimation logic inside graph nodes.
 - Do not add LangGraph checkpoint, persistence, human-in-the-loop, dynamic routing, or LLM planner unless explicitly requested.
+- Lightweight human review checkpoints should stay demo/UI-level only and must not store approvals or uploaded data.
+- Keep deployment readiness lightweight; do not add login, database, persistent uploaded data storage, Docker, Kubernetes, or production access control unless explicitly requested.
 - Do not add matplotlib, seaborn, or plotly for v0.4-style lightweight charts; prefer pandas and Streamlit built-ins.
 - Prefer small, targeted edits that keep the existing repository layout intact.
 
@@ -113,6 +120,9 @@ python -m py_compile app/ui_streamlit.py
 - PDF export must gracefully skip or raise `PDFExportUnavailableError` when ReportLab is unavailable.
 - Data Quality checks should return a plain dict unless the user explicitly asks for schema changes.
 - LangGraph tests must skip full-run behavior when `langgraph` is not installed rather than failing.
+- LangGraph trace tests should validate stable metadata shape without requiring `langgraph` to be installed.
+- Dependency status checks must not expose API key values.
+- Public demo UI should remind users to use sample data and avoid private or sensitive uploads.
 
 ## Definition of Done
 

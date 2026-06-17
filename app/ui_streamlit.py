@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -19,15 +20,20 @@ from app.core.schemas import AnalysisRequest
 from app.graph.langgraph_runner import (
     LangGraphUnavailableError,
     is_langgraph_available,
-    run_langgraph_pipeline,
+    run_langgraph_pipeline_with_trace,
 )
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
 from app.services.data_quality import run_data_quality_checks
+from app.services.dependency_status import get_optional_dependency_status
 from app.services.variable_recommender import VariableRecommendation, recommend_variables
 
 
 DEFAULT_DATASET = Path("data/sample_marketing.csv")
 AGENT_FLOW = "Data Engineer → Statistician → Causal Agent → Heterogeneity Agent → Reviewer → Reporter"
+
+
+def _is_public_demo_mode() -> bool:
+    return os.getenv("APP_DEMO_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _default_index(columns: list[str], column_name: str) -> int:
@@ -229,10 +235,59 @@ def _outcome_by_treatment_frame(df: pd.DataFrame, treatment: str, outcome: str) 
     return frame.groupby("treatment", dropna=False)["outcome"].mean().reset_index(name="mean_outcome")
 
 
+def _dependency_status_frame(status: dict[str, Any]) -> pd.DataFrame:
+    rows = []
+    for key in ["dowhy", "econml", "langgraph", "reportlab"]:
+        payload = status.get(key, {})
+        rows.append(
+            {
+                "component": payload.get("label", key),
+                "status": payload.get("status", "unknown"),
+                "enabled": bool(payload.get("available", False)),
+            }
+        )
+    deepseek = status.get("deepseek_configured", {})
+    rows.append(
+        {
+            "component": deepseek.get("label", "DeepSeek API"),
+            "status": deepseek.get("status", "unknown"),
+            "enabled": bool(deepseek.get("configured", False)),
+        }
+    )
+    return pd.DataFrame(rows)
+
+
+def _langgraph_trace_frame(trace: list[dict[str, Any]]) -> pd.DataFrame:
+    rows = []
+    for index, step in enumerate(trace, start=1):
+        rows.append(
+            {
+                "order": index,
+                "step": step.get("step_name", "unknown"),
+                "status": step.get("status", "unknown"),
+                "summary": step.get("summary", ""),
+                "warnings": "; ".join(step.get("warnings", []) or []),
+                "error": step.get("error") or "",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 st.set_page_config(page_title="Multi-Agent Causal Analytics Team", layout="wide")
 st.title("Multi-Agent Causal Analytics Team")
 st.caption("一个用于因果分析的多 Agent 数据分析团队")
 st.markdown(f"**Agent 流程：** `{AGENT_FLOW}`")
+demo_mode_label = "public demo" if _is_public_demo_mode() else "local / development"
+st.info(
+    f"Demo mode: `{demo_mode_label}`\n\n"
+    "This app is a demo-oriented causal analytics tool. Use the built-in sample dataset for public demos. "
+    "Do not upload private or sensitive data to public deployments.\n\n"
+    "公开部署环境建议只使用内置样例数据。不要上传真实业务数据、隐私数据或敏感数据。"
+)
+with st.expander("Deployment / Optional Dependency Status", expanded=False):
+    dependency_status = get_optional_dependency_status()
+    st.dataframe(_dependency_status_frame(dependency_status), use_container_width=True, hide_index=True)
+    st.caption("API key values are never displayed. Optional dependencies can be installed only when needed.")
 st.divider()
 
 source = st.radio("数据来源", ["使用样例数据", "上传文件"], horizontal=True)
@@ -349,6 +404,24 @@ if df is not None:
         value=False,
         help="默认关闭。仅在已安装 requirements-langgraph.txt 时使用 LangGraph 编排现有 Agent；未安装时会自动回退到 deterministic orchestrator。",
     )
+    st.caption(
+        "Advanced LangGraph mode shows an experimental multi-agent graph execution trace. "
+        "The deterministic orchestrator remains the default stable path."
+    )
+    with st.expander("Human review checkpoint (demo only)", expanded=False):
+        st.write(
+            {
+                "question": question,
+                "treatment": treatment,
+                "outcome": outcome,
+                "confounders": confounders,
+                "effect_modifiers": effect_modifiers,
+            }
+        )
+        st.caption(
+            "This is a lightweight UI-level review checkpoint for demos. "
+            "It does not store data, create approvals, or change the pipeline."
+        )
 
     if st.button("运行 Multi-Agent 因果分析", type="primary"):
         request = AnalysisRequest(
@@ -361,10 +434,15 @@ if df is not None:
             use_llm_report=use_llm_report,
         )
         orchestration_mode = "deterministic"
+        langgraph_trace: list[dict[str, Any]] = []
+        langgraph_state_summary: dict[str, Any] = {}
         if use_langgraph:
             if is_langgraph_available():
                 try:
-                    bundle = run_langgraph_pipeline(request, df)
+                    bundle, langgraph_trace, langgraph_state_summary = run_langgraph_pipeline_with_trace(
+                        request,
+                        df,
+                    )
                     orchestration_mode = "langgraph_experimental"
                 except LangGraphUnavailableError as exc:
                     st.warning(f"LangGraph orchestration unavailable：{exc} 已回退到 deterministic orchestrator。")
@@ -381,6 +459,15 @@ if df is not None:
             bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
 
         st.caption(f"Orchestration mode: `{orchestration_mode}`")
+        if langgraph_trace:
+            with st.expander("LangGraph execution trace / step timeline", expanded=True):
+                st.dataframe(
+                    _langgraph_trace_frame(langgraph_trace),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            with st.expander("LangGraph graph state summary", expanded=False):
+                st.json(langgraph_state_summary)
 
         if bundle.estimate and bundle.estimate.ate is not None:
             metric_cols = st.columns(3)
