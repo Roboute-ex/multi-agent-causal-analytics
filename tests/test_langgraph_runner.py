@@ -8,7 +8,12 @@ import pytest
 
 from app.core.schemas import AnalysisRequest, PipelineBundle
 from app.graph import langgraph_runner
-from app.graph.langgraph_runner import LangGraphUnavailableError, run_langgraph_pipeline
+from app.graph.langgraph_runner import (
+    LANGGRAPH_NODE_ORDER,
+    LangGraphUnavailableError,
+    run_langgraph_pipeline,
+    run_langgraph_pipeline_with_trace,
+)
 from data.generate_synthetic import make_synthetic_marketing_data
 
 
@@ -28,6 +33,7 @@ def test_langgraph_runner_imports_without_optional_dependency():
 
     assert hasattr(module, "is_langgraph_available")
     assert hasattr(module, "run_langgraph_pipeline")
+    assert hasattr(module, "run_langgraph_pipeline_with_trace")
     assert hasattr(module, "LangGraphUnavailableError")
 
 
@@ -49,6 +55,13 @@ def test_run_langgraph_pipeline_raises_clear_error_when_missing(monkeypatch):
 
     with pytest.raises(LangGraphUnavailableError, match="LangGraph is not installed"):
         run_langgraph_pipeline(_request(), make_synthetic_marketing_data(n=80, seed=7))
+
+
+def test_run_langgraph_pipeline_with_trace_raises_clear_error_when_missing(monkeypatch):
+    monkeypatch.setattr(langgraph_runner, "is_langgraph_available", lambda: False)
+
+    with pytest.raises(LangGraphUnavailableError, match="LangGraph is not installed"):
+        run_langgraph_pipeline_with_trace(_request(), make_synthetic_marketing_data(n=80, seed=7))
 
 
 def test_langgraph_runner_does_not_import_openai_api():
@@ -86,3 +99,17 @@ def test_run_langgraph_pipeline_returns_pipeline_bundle_when_installed():
         "deepseek_reporter",
     ]
     assert bundle.agent_logs[-1].status == "skipped"
+
+
+def test_run_langgraph_pipeline_with_trace_returns_trace_when_installed():
+    if not langgraph_runner.is_langgraph_available():
+        pytest.skip("langgraph is not installed; full LangGraph run is optional.")
+
+    df = make_synthetic_marketing_data(n=300, seed=456)
+    bundle, trace, state_summary = run_langgraph_pipeline_with_trace(_request(), df)
+
+    assert isinstance(bundle, PipelineBundle)
+    assert [step["step_name"] for step in trace] == LANGGRAPH_NODE_ORDER
+    assert state_summary["trace_step_count"] == len(LANGGRAPH_NODE_ORDER)
+    assert state_summary["has_report"] is True
+    assert bundle.plan["langgraph_trace"] == trace

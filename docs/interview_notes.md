@@ -99,3 +99,31 @@
 英文回答：
 
 In v0.6, I improved the reporting layer rather than changing the causal estimation core. The HTML report became more polished and print-friendly, and PDF export was added as an optional dependency. If ReportLab is not installed, the app falls back gracefully, so the core analytics workflow remains stable.
+
+## 12. v0.7 为什么做 deployment readiness，而不是登录或数据库？
+
+回答要点：
+
+- deployment readiness 是 v0.7 的过渡性增强，不是正式主标题。
+- 我没有加入登录、数据库或生产级权限系统，而是做了轻量部署准备。
+- 项目可以作为 Streamlit public demo 展示，但公开环境建议只使用内置样例数据，不上传真实业务数据。
+- 可选依赖状态会在 UI 中展示，方便解释 DoWhy、EconML、LangGraph 和 PDF export 的 graceful fallback。
+- 这保持了项目轻量、安全、本地可运行，也不改变核心因果分析 pipeline。
+
+英文回答：
+
+In v0.7, I focused on deployment readiness rather than adding a login system or database. The app can be used as a lightweight Streamlit public demo with built-in sample data. Optional dependency status is displayed in the UI, making it clear which advanced features are available and which ones gracefully fall back.
+
+## 13. v0.7 Advanced LangGraph Orchestration 的价值是什么？
+
+回答要点：
+
+- v0.7 的正式主线是强化 optional LangGraph adapter，而不是替换稳定的 deterministic pipeline。
+- LangGraph mode 会展示 graph execution trace / step timeline 和 graph state summary，让 multi-agent workflow engineering 更可见。
+- 输出仍然是现有 `PipelineBundle`，没有改 `schemas.py`，也没有改 ATE/CATE/refutation 的核心逻辑。
+- 未安装 LangGraph 时会 graceful fallback，说明高级编排能力不会变成强依赖。
+- human review checkpoint 只是 demo-safe 的 UI 说明，不做数据库、持久化或生产级 HITL。
+
+英文回答：
+
+In v0.7, I strengthened the optional LangGraph orchestration layer instead of replacing the stable deterministic pipeline. The LangGraph mode now exposes an execution trace, step timeline, and graph state summary, which makes the multi-agent workflow engineering easier to explain. The output still uses the existing `PipelineBundle`, and LangGraph remains optional with graceful fallback when it is not installed.

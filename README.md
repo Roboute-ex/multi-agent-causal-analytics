@@ -1,7 +1,7 @@
 # Multi-Agent 因果分析团队 MVP
 这个项目的思路是把一次完整的结构化数据分析拆给几个职责清晰的 Agent 来分工完成：先做数据画像、判断分析方法，再用 DoWhy 估计平均处理效应（ATE），跑 refutation 做稳健性检验，装了 EconML 的话还会顺带做 CATE 异质性分析，最后生成 Markdown / HTML / 可选 PDF 报告。
 
-整个项目的重点是稳定、纯本地、能测试、能 demo，适合直接放到 GitHub 上展示。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关着，不影响主流程。v0.4 加了轻量数据质量检查和 Streamlit 内置图表；v0.5 加了默认关闭的 LangGraph 实验编排适配层；v0.6 把 HTML 报告好好打磨了一遍，同时加了可选的 PDF 导出。
+整个项目的重点是稳定、纯本地、能测试、能 demo，适合直接放到 GitHub 上展示。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关着，不影响主流程。v0.4 加了轻量数据质量检查和 Streamlit 内置图表；v0.5 加了默认关闭的 LangGraph 实验编排适配层；v0.6 把 HTML 报告好好打磨了一遍，同时加了可选的 PDF 导出；v0.7 正式主题是 Advanced LangGraph Orchestration，并保留 deployment readiness / public demo safety 作为过渡增强。
 
 ## 能做什么
 
@@ -16,6 +16,8 @@
 - Reporter Agent 生成完整报告
 - Streamlit 前端展示 Data Quality、ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown / HTML 下载和可选 PDF 下载
 - 可选 LangGraph 编排模式，没装 langgraph 的话自动回退到确定性编排
+- Advanced LangGraph mode：展示 experimental graph execution trace、step timeline 和 graph state summary
+- 过渡性部署准备：public demo 安全提示、demo mode indicator、optional dependency status panel
 - pytest 覆盖端到端 pipeline、Excel/CSV 读取、数据质量、CATE 可选跳过、refutation 结构和报告导出
 
 
@@ -28,16 +30,23 @@
 这个功能复用现有的可选 DeepSeek 配置，但不是 MVP 主流程的必要依赖。**别把真实 API key 写进代码、README 或提交到 GitHub。**
 
 
-## 可选功能：LangGraph 实验编排
+## v0.7 Advanced LangGraph Orchestration
 
-v0.5 加了一个默认关闭的 LangGraph 编排模式。它只是换了一种 Agent 调度方式，ATE、CATE、refutation、数据质量检查、变量推荐、报告导出这些核心逻辑一概没动。
+v0.7 强化了默认关闭的 LangGraph 编排模式。它仍然只是换了一种 Agent 调度方式，ATE、CATE、refutation、数据质量检查、变量推荐、报告导出这些核心逻辑一概没动。
 
 用法：
 - 默认不勾选，走现有的确定性 `AnalyticsTeamOrchestrator`
 - 勾选"Use experimental LangGraph orchestration"且装了 `langgraph`，走 `app/graph/langgraph_runner.py`
 - 勾选了但没装 `langgraph`，Streamlit 会弹 warning，自动回退到确定性编排
 
-这个模式不用 OpenAI API，也不做 checkpoint、持久化、人工干预、动态路由或 LLM 规划器。
+Advanced LangGraph mode 会展示：
+
+- orchestration mode
+- graph execution trace / step timeline
+- graph state summary
+- demo-only human review checkpoint 说明
+
+这个模式不用 OpenAI API，也不做 checkpoint、持久化、数据库、生产级人工干预、动态路由或 LLM 规划器。详细说明见 [docs/langgraph_v0.7.md](docs/langgraph_v0.7.md)。
 
 
 
@@ -94,6 +103,7 @@ app/
   services/
     data_loader.py             # CSV / Excel 读取
     data_quality.py            # 数据质量检查
+    dependency_status.py       # 可选依赖和 demo 配置状态
     profile_service.py         # 数据画像
     method_service.py          # 方法选择
     causal_dowhy.py            # DoWhy ATE 与 fallback
@@ -109,7 +119,12 @@ tests/
   test_refutations.py
   test_report_export.py
   test_data_quality.py
+  test_dependency_status.py
   test_langgraph_runner.py
+  test_langgraph_trace.py
+docs/
+  deployment.md
+  langgraph_v0.7.md
 requirements.txt
 requirements-causal.txt
 requirements-cate.txt
@@ -187,6 +202,26 @@ PDF 导出依赖 ReportLab。未安装时，Streamlit 会显示安装提示，Ma
 http://localhost:8501
 ```
 
+## Deployment / Public Demo
+
+This project is deployment-ready for a lightweight Streamlit demo. Public deployments should use the built-in sample dataset and should not receive private or sensitive data.
+
+公开部署环境建议只使用 `data/sample_marketing.csv`。不要上传真实业务数据、隐私数据或敏感数据。
+
+推荐入口：
+
+```text
+app/ui_streamlit.py
+```
+
+可以通过环境变量启用 public demo 指示：
+
+```powershell
+$env:APP_DEMO_MODE="true"
+```
+
+页面中的 `Deployment / Optional Dependency Status` 面板会展示 DoWhy、EconML、LangGraph、ReportLab PDF export 和 DeepSeek API 是否可用，但不会显示任何 API key。详细部署说明见 [docs/deployment.md](docs/deployment.md)。
+
 
 ## 样例数据说明
 
@@ -263,6 +298,7 @@ HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 导出是
 - LLM 变量推荐只是辅助选字段，不等于自动因果发现，也不能证明因果识别成立
 - LangGraph 模式不做 checkpoint、持久化、人工干预、动态路由或 LLM 规划器
 - PDF 导出是可选报告层能力，不改变 ATE、CATE、refutation 或 Reviewer 结果
+- Public demo 没有登录、数据库、持久化上传文件或生产级访问控制，不适合在公开环境处理真实业务数据
 
 
 

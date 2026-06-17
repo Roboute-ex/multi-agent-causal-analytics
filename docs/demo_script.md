@@ -12,9 +12,13 @@
 
 15-30 秒：
 
-选择内置营销样例数据，展示数据预览。说明样例数据模拟优惠券是否影响购买概率。
+展示 public demo 安全提示和 `Deployment / Optional Dependency Status` 面板。说明公开 demo 建议只使用内置样例数据，不上传真实业务数据、隐私数据或敏感数据。
 
 30-45 秒：
+
+选择内置营销样例数据，展示数据预览。说明样例数据模拟优惠券是否影响购买概率。
+
+45-60 秒：
 
 展示变量配置和 Data Quality Summary：
 
@@ -24,14 +28,14 @@
 - Effect Modifier: `visits`
 - Data Quality: 行数、列数、缺失率、重复行、warning count、selected complete-case count
 
-45-65 秒：
+60-75 秒：
 
-展示 `Use experimental LangGraph orchestration` 选项。说明默认关闭；未安装 LangGraph 时会自动回退到 deterministic orchestrator。点击运行分析，展示 ATE metric、估计方法、CATE 状态和 refutation 表格。强调 DoWhy 用于 ATE，EconML 和 LangGraph 都是 optional。
+展示 `Use experimental LangGraph orchestration` 选项。说明 deterministic orchestrator 仍是默认稳定路径；Advanced LangGraph mode 用于展示 multi-agent workflow engineering。若本地安装了 LangGraph，勾选后运行并展示 graph execution trace / step timeline 和 graph state summary；未安装时会自动回退到 deterministic orchestrator。
 
-65-80 秒：
+75-85 秒：
 
 打开稳健性检查、Reviewer warnings 和 Agent 日志。说明 Reviewer 检查 placebo treatment、random common cause 和 data subset 三类 refutation。
 
-80-90 秒：
+85-90 秒：
 
-下载 Markdown、HTML 或 optional PDF 报告。说明 v0.6 美化了 HTML report，并加入 print-friendly CSS；PDF export 依赖 ReportLab，未安装时会 graceful fallback。强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、optional LangGraph 编排层、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+下载 Markdown、HTML 或 optional PDF 报告。说明 deployment readiness 是保留的过渡增强：有安全提示、demo mode indicator 和 optional dependency status。强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、Advanced LangGraph trace、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
