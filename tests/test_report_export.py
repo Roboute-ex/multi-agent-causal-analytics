@@ -134,6 +134,8 @@ def test_html_report_generates_core_sections():
 
     assert html
     assert "Multi-Agent Causal Analytics Team Report" in html
+    assert "Report summary cards" in html
+    assert "summary-card" in html
     assert "User question" in html
     assert "Treatment" in html
     assert "Outcome" in html
@@ -142,6 +144,14 @@ def test_html_report_generates_core_sections():
     assert "Refutation results" in html
     assert "Reviewer warnings" in html
     assert "Caveats / limitations" in html
+
+
+def test_html_report_has_professional_header_and_print_css():
+    html = build_html_report(_sample_bundle())
+
+    assert 'class="report-header"' in html
+    assert "A polished causal analytics report" in html
+    assert "@media print" in html
 
 
 def test_html_report_escapes_special_characters():

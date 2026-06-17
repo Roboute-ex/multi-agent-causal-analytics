@@ -34,4 +34,4 @@
 
 80-90 秒：
 
-下载 Markdown 或 HTML 报告，强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、optional LangGraph 编排层、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+下载 Markdown、HTML 或 optional PDF 报告。说明 v0.6 美化了 HTML report，并加入 print-friendly CSS；PDF export 依赖 ReportLab，未安装时会 graceful fallback。强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、optional LangGraph 编排层、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。

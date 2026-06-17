@@ -16,6 +16,7 @@ def build_html_report(bundle: PipelineBundle, data_quality: dict[str, Any] | Non
     review = bundle.review
 
     sections = [
+        _summary_cards(bundle, data_quality),
         _section(
             "User question",
             f"<p>{_e(request.question)}</p>",
@@ -138,8 +139,7 @@ def build_html_report(bundle: PipelineBundle, data_quality: dict[str, Any] | Non
             "</head>",
             "<body>",
             '<main class="report">',
-            '<p class="eyebrow">Multi-Agent Causal Analytics Team</p>',
-            "<h1>Multi-Agent Causal Analytics Team Report</h1>",
+            _report_header(),
             "".join(sections),
             "</main>",
             "</body>",
@@ -154,6 +154,40 @@ def _e(value: Any) -> str:
 
 def _section(title: str, body: str) -> str:
     return f'<section><h2>{_e(title)}</h2>{body}</section>'
+
+
+def _report_header() -> str:
+    return (
+        '<header class="report-header">'
+        '<p class="eyebrow">Multi-Agent Causal Analytics Team</p>'
+        "<h1>Multi-Agent Causal Analytics Team Report</h1>"
+        "<p>"
+        "A polished causal analytics report generated from a deterministic multi-agent "
+        "workflow with optional CATE, LLM, LangGraph, and export layers."
+        "</p>"
+        "</header>"
+    )
+
+
+def _summary_cards(bundle: PipelineBundle, data_quality: dict[str, Any] | None) -> str:
+    request = bundle.request
+    estimate = bundle.estimate
+    cate = bundle.cate
+    cards = [
+        ("Treatment", request.treatment),
+        ("Outcome", request.outcome),
+        ("Estimated ATE", _format_number(estimate.ate if estimate else None)),
+        ("CATE status", cate.status if cate else "N/A"),
+        ("Warning count", _warning_count(bundle, data_quality)),
+    ]
+    body = "".join(
+        '<article class="summary-card">'
+        f"<span>{_e(label)}</span>"
+        f"<strong>{_e(value)}</strong>"
+        "</article>"
+        for label, value in cards
+    )
+    return f'<section class="summary-grid" aria-label="Report summary cards">{body}</section>'
 
 
 def _definition_list(items: Iterable[tuple[str, Any]]) -> str:
@@ -327,6 +361,25 @@ def _format_interval(values: list[float] | None) -> str:
     return f"[{_format_number(values[0])}, {_format_number(values[1])}]"
 
 
+def _warning_count(bundle: PipelineBundle, data_quality: dict[str, Any] | None) -> int:
+    count = 0
+    if bundle.method:
+        count += len(bundle.method.warnings)
+    if bundle.estimate:
+        count += len(bundle.estimate.warnings)
+        if bundle.estimate.error:
+            count += 1
+    if bundle.cate:
+        count += len(bundle.cate.warnings)
+        if bundle.cate.error and bundle.cate.status == "error":
+            count += 1
+    if bundle.review:
+        count += len(bundle.review.warnings)
+    if data_quality:
+        count += len(data_quality.get("warnings", []))
+    return count
+
+
 def _format_rate(value: Any) -> str:
     if value is None:
         return "N/A"
@@ -367,32 +420,53 @@ def _list_or_message(items: Iterable[Any], message: str) -> str:
 def _style_block() -> str:
     return """
 <style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f6fb;
+    --paper: #ffffff;
+    --ink: #172033;
+    --muted: #5b6475;
+    --line: #d9e0ea;
+    --accent: #2563eb;
+    --accent-soft: #eaf1ff;
+    --warning-bg: #fff7ed;
+    --warning-line: #fed7aa;
+  }
   body {
     margin: 0;
-    background: #f5f7fb;
-    color: #18202f;
+    background: var(--bg);
+    color: var(--ink);
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.55;
   }
   .report {
-    max-width: 1040px;
+    max-width: 1080px;
     margin: 0 auto;
-    padding: 40px 24px 56px;
+    padding: 36px 24px 56px;
+  }
+  .report-header {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+    margin-bottom: 18px;
+    padding: 28px;
   }
   .eyebrow {
-    color: #4f46e5;
+    color: var(--accent);
     font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     margin: 0 0 8px;
     text-transform: uppercase;
   }
   h1 {
     font-size: 34px;
-    margin: 0 0 28px;
+    line-height: 1.15;
+    margin: 0 0 10px;
   }
   h2 {
-    border-bottom: 1px solid #d7dcea;
+    border-bottom: 1px solid var(--line);
     font-size: 22px;
     margin-top: 0;
     padding-bottom: 8px;
@@ -402,11 +476,42 @@ def _style_block() -> str:
     margin-bottom: 8px;
   }
   section {
-    background: #ffffff;
-    border: 1px solid #dfe4ef;
+    background: var(--paper);
+    border: 1px solid var(--line);
     border-radius: 8px;
     margin: 18px 0;
     padding: 22px;
+  }
+  .summary-grid {
+    background: transparent;
+    border: 0;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    margin: 0 0 18px;
+    padding: 0;
+  }
+  .summary-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .summary-card span {
+    color: var(--muted);
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+  }
+  .summary-card strong {
+    color: var(--ink);
+    display: block;
+    font-size: 18px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
   dl {
     display: grid;
@@ -414,7 +519,7 @@ def _style_block() -> str:
     gap: 8px 16px;
   }
   dt {
-    color: #4b5563;
+    color: var(--muted);
     font-weight: 700;
   }
   dd {
@@ -427,19 +532,54 @@ def _style_block() -> str:
     width: 100%;
   }
   th, td {
-    border: 1px solid #dfe4ef;
+    border: 1px solid var(--line);
     padding: 9px 10px;
     text-align: left;
     vertical-align: top;
   }
   th {
-    background: #eef2ff;
+    background: var(--accent-soft);
   }
   .warning {
-    background: #fff7ed;
-    border: 1px solid #fed7aa;
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-line);
     border-radius: 6px;
     padding: 10px 12px;
+  }
+  @media print {
+    body {
+      background: #ffffff;
+      color: #000000;
+      font-size: 11pt;
+    }
+    .report {
+      max-width: none;
+      padding: 0;
+    }
+    .report-header,
+    section,
+    .summary-card {
+      box-shadow: none;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    h1 {
+      font-size: 24pt;
+    }
+    h2 {
+      font-size: 16pt;
+    }
+    table {
+      break-inside: auto;
+      page-break-inside: auto;
+    }
+    tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
   }
 </style>
 """
