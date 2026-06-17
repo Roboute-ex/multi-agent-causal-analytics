@@ -86,3 +86,16 @@
 - LangGraph adapter 只负责编排现有 Agent 节点，输出仍然是 `PipelineBundle`。
 - 未安装 `langgraph` 时 UI 会 warning 并回退到 deterministic orchestrator，避免把实验能力变成强依赖。
 - v0.5 不做 checkpoint、persistence、human-in-the-loop、动态路由或 LLM planner，边界更清晰。
+
+## 11. v0.6 为什么只增强报告层？
+
+回答要点：
+
+- v0.6 没有修改因果估计核心逻辑，而是增强报告交付能力。
+- HTML report 加入更清晰的结构、summary cards 和 print-friendly CSS。
+- PDF export 被设计成 optional dependency，未安装 ReportLab 时系统会 graceful fallback。
+- 这样不会破坏 deterministic pipeline、Data Quality、LangGraph adapter 或现有 Markdown/HTML 下载。
+
+英文回答：
+
+In v0.6, I improved the reporting layer rather than changing the causal estimation core. The HTML report became more polished and print-friendly, and PDF export was added as an optional dependency. If ReportLab is not installed, the app falls back gracefully, so the core analytics workflow remains stable.

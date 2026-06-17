@@ -12,6 +12,7 @@ This repository is a local, GitHub-ready MVP for a multi-agent causal analytics 
 - optional CATE analysis with graceful skip
 - data quality checks before causal analysis
 - optional LangGraph orchestration adapter with graceful fallback
+- polished HTML and optional PDF report export
 - refutation checks
 - Reviewer Agent validation
 - Markdown report generation
@@ -20,7 +21,7 @@ Current project status:
 
 - Phase 1 MVP is complete.
 - Phase 2 presentation enhancement is complete.
-- The latest full pytest result should be checked after each change; v0.5 adds optional LangGraph adapter tests.
+- The latest full pytest result should be checked after each change; v0.6 adds optional PDF export tests.
 - Streamlit can be accessed locally.
 - The current priority is stability, GitHub presentation quality, and resume presentation quality.
 
@@ -31,6 +32,7 @@ Current project status:
 - `app/core/schemas.py`: Pydantic request/result schemas shared across agents and services.
 - `app/core/report.py`: local Markdown report generation.
 - `app/core/report_export.py`: local HTML report export generated after the pipeline finishes.
+- `app/core/pdf_export.py`: optional ReportLab PDF export generated after the pipeline finishes.
 - `app/graph/langgraph_runner.py`: optional LangGraph experimental orchestration adapter.
 - `app/agents/team.py`: core agents, including Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter.
 - `app/services/data_quality.py`: lightweight data quality checks returned as a plain dict for UI/report display.
@@ -50,11 +52,13 @@ Current project status:
 - Do not integrate the OpenAI API unless the user explicitly requests it.
 - Keep LangGraph optional and experimental; do not replace `app/core/orchestrator.py`.
 - Do not move LangGraph into base requirements.
+- Keep ReportLab PDF export optional; do not move it into base requirements.
 - Do not add a database, login system, or deployment configuration unless the user explicitly requests it.
 - Do not read, print, upload, or commit `.env`.
 - Do not run `git push`.
 - Preserve the current MVP behavior before adding presentation or documentation improvements.
 - Keep report export as a presentation/download layer; do not make it part of the causal pipeline.
+- Keep PDF export as a presentation/download layer; do not make it part of the causal pipeline.
 - Keep data quality checks as pre-analysis diagnostics and report/UI display; do not make them change ATE/CATE/refutation computation.
 - Keep LangGraph as orchestration only; do not add new statistical estimation logic inside graph nodes.
 - Do not add LangGraph checkpoint, persistence, human-in-the-loop, dynamic routing, or LLM planner unless explicitly requested.
@@ -88,6 +92,7 @@ Windows virtual environment examples:
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\streamlit.exe run app\ui_streamlit.py
 .\.venv\Scripts\python.exe -m pip install -r requirements-langgraph.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-pdf.txt
 ```
 
 ## Testing Requirements
@@ -105,6 +110,7 @@ python -m py_compile app/ui_streamlit.py
 - DoWhy can fall back when unavailable, but fallback behavior must include a warning.
 - Keep `requirements-cate.txt` separate from base dependencies.
 - HTML report export must not introduce required dependencies; PDF export should remain optional unless explicitly requested.
+- PDF export must gracefully skip or raise `PDFExportUnavailableError` when ReportLab is unavailable.
 - Data Quality checks should return a plain dict unless the user explicitly asks for schema changes.
 - LangGraph tests must skip full-run behavior when `langgraph` is not installed rather than failing.
 

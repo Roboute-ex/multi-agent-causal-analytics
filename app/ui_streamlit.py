@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.orchestrator import AnalyticsTeamOrchestrator
+from app.core.pdf_export import PDFExportUnavailableError, build_pdf_report, is_pdf_export_available
 from app.core.report import build_data_quality_markdown
 from app.core.report_export import build_html_report
 from app.core.schemas import AnalysisRequest
@@ -421,7 +422,7 @@ if df is not None:
                     else data_quality_markdown
                 )
             st.markdown(report_markdown)
-            download_cols = st.columns(2)
+            download_cols = st.columns(3)
             with download_cols[0]:
                 st.download_button(
                     "下载 Markdown 报告",
@@ -436,6 +437,24 @@ if df is not None:
                     file_name="multi_agent_causal_report.html",
                     mime="text/html",
                 )
+            with download_cols[2]:
+                if is_pdf_export_available():
+                    try:
+                        pdf_report = build_pdf_report(bundle, data_quality=data_quality)
+                    except PDFExportUnavailableError as exc:
+                        st.info(f"Optional PDF export is unavailable: {exc}")
+                    else:
+                        st.download_button(
+                            "下载 PDF 报告",
+                            data=pdf_report,
+                            file_name="multi_agent_causal_report.pdf",
+                            mime="application/pdf",
+                        )
+                else:
+                    st.info(
+                        "Optional PDF export requires reportlab. Install with:\n"
+                        "`.\\.venv\\Scripts\\python.exe -m pip install -r requirements-pdf.txt`"
+                    )
 
         with tab_robustness:
             if bundle.estimate:
