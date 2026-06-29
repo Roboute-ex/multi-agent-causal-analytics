@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.core.report import build_data_quality_markdown, build_markdown_report
+from app.core.report import (
+    build_data_quality_markdown,
+    build_interpretability_markdown,
+    build_markdown_report,
+)
 from app.core.report_export import build_html_report
 from app.core.schemas import (
     AgentResult,
@@ -122,6 +126,49 @@ def _sample_data_quality() -> dict:
     }
 
 
+def _sample_causal_trust() -> dict:
+    return {
+        "status": "warning",
+        "effect_direction": "positive",
+        "robustness_level": "medium",
+        "key_warnings": [
+            "Observational data cannot rule out unmeasured confounding.",
+            "Review <script>trust</script> before presenting.",
+        ],
+        "recommendations": ["Use refutation checks as robustness signals, not proof."],
+    }
+
+
+def _sample_sensitivity() -> dict:
+    return {
+        "status": "ok",
+        "sensitivity_status": "partially_stable",
+        "stability_notes": ["data_subset keeps the same direction."],
+        "warnings": ["placebo_treatment is near zero as expected."],
+        "refutation_details": {
+            "data_subset": {
+                "status": "ok",
+                "baseline_effect": 0.12,
+                "new_effect": 0.10,
+                "direction_stable": True,
+            }
+        },
+        "limitations": ["This is a conservative summary of existing refutations."],
+    }
+
+
+def _sample_heterogeneity() -> dict:
+    return {
+        "status": "ok",
+        "cate_status": "ok",
+        "top_effect_modifiers": ["visits"],
+        "segment_effect_summary": {"visits": "higher prior visits show larger effects"},
+        "business_interpretation": "CATE suggests useful segmentation, subject to sample quality.",
+        "shap_summary": {"status": "skipped", "message": "SHAP unavailable."},
+        "limitations": ["CATE is exploratory and should not be over-interpreted."],
+    }
+
+
 def test_markdown_report_still_generates():
     markdown = build_markdown_report(_sample_bundle())
 
@@ -174,6 +221,24 @@ def test_html_report_with_data_quality_contains_summary():
     assert "&lt;script&gt;bad_column&lt;/script&gt;" in html
 
 
+def test_html_report_with_interpretability_sections():
+    html = build_html_report(
+        _sample_bundle(),
+        causal_trust=_sample_causal_trust(),
+        sensitivity_summary=_sample_sensitivity(),
+        heterogeneity_summary=_sample_heterogeneity(),
+    )
+
+    assert "Causal Trust Summary" in html
+    assert "Robustness / Sensitivity Notes" in html
+    assert "Heterogeneity Explanation" in html
+    assert "Effect direction" in html
+    assert "Sensitivity status" in html
+    assert "CATE status" in html
+    assert "<script>trust</script>" not in html
+    assert "&lt;script&gt;trust&lt;/script&gt;" in html
+
+
 def test_html_report_without_data_quality_keeps_previous_behavior():
     html = build_html_report(_sample_bundle(), data_quality=None)
 
@@ -197,3 +262,16 @@ def test_markdown_data_quality_helper_handles_empty_warnings():
     markdown = build_data_quality_markdown(data_quality)
 
     assert "No major data quality warnings." in markdown
+
+
+def test_markdown_interpretability_helper_contains_sections():
+    markdown = build_interpretability_markdown(
+        causal_trust=_sample_causal_trust(),
+        sensitivity_summary=_sample_sensitivity(),
+        heterogeneity_summary=_sample_heterogeneity(),
+    )
+
+    assert "Causal Trust Summary" in markdown
+    assert "Robustness / Sensitivity Notes" in markdown
+    assert "Heterogeneity Explanation" in markdown
+    assert "observational" in markdown.lower()

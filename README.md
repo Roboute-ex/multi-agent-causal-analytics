@@ -13,6 +13,7 @@
 - Causal Agent 用 DoWhy 估 ATE；没装 DoWhy 的话降级用线性调整估计，结果里会带 warning 提示
 - Reviewer Agent 检查三类 refutation：`placebo_treatment`、`random_common_cause`、`data_subset`
 - Heterogeneity Agent 可选用 EconML 估 CATE；没装的话返回 skipped，主流程照常继续
+- Causal Trust Summary、Sensitivity Notes 和 Heterogeneity Explanation 把因果结果转成更保守、更可解释的业务提示
 - Reporter Agent 生成完整报告
 - Streamlit 前端展示 Data Quality、ATE、CATE 状态、refutation、Reviewer 检查、Agent 日志，并支持 Markdown / HTML 下载和可选 PDF 下载
 - 可选 LangGraph 编排模式，没装 langgraph 的话自动回退到确定性编排
@@ -48,6 +49,22 @@ Advanced LangGraph mode 会展示：
 
 这个模式不用 OpenAI API，也不做 checkpoint、持久化、数据库、生产级人工干预、动态路由或 LLM 规划器。详细说明见 [docs/langgraph_v0.7.md](docs/langgraph_v0.7.md)。
 
+
+
+## v0.8 Causal Robustness and Interpretability
+
+v0.8 不是继续堆新的 Agent 框架功能，而是把重点放到因果分析结果的可信度、稳健性解释和业务可解释性上：把 ATE、refutation、数据质量 warning 和可选 CATE 输出，转换成更适合业务用户阅读的保守解释。
+
+新增展示和报告能力：
+
+- Causal Trust Summary：总结效应方向、稳健性等级、关键 warning 和建议。
+- Robustness / Sensitivity Notes：基于已有 refutation 结果，保守判断 placebo、random common cause、data subset 下的方向稳定性。
+- Heterogeneity Explanation：在 CATE 可用时解释 effect modifiers 和分层效应；CATE skipped/error 时 graceful skip。
+- Markdown / HTML / optional PDF 报告在 pipeline 完成后附加这些解释摘要。
+
+这些摘要不是自动因果发现，也不能证明因果识别成立。它们会明确提示 observational data limitations、unmeasured confounding risk 和 sample quality risk。v0.8 不修改 `orchestrator.py`、`schemas.py`、`causal_dowhy.py`、`cate_econml.py`、`variable_recommender.py` 或 `langgraph_runner.py`，deterministic pipeline 仍然是默认稳定路径。
+
+Latest v0.8 verification: `78 passed, 1 skipped` with `python -m pytest -q`.
 
 
 ## Agent 架构
@@ -104,6 +121,9 @@ app/
     data_loader.py             # CSV / Excel 读取
     data_quality.py            # 数据质量检查
     dependency_status.py       # 可选依赖和 demo 配置状态
+    causal_trust.py            # v0.8 因果可信度摘要
+    sensitivity_service.py     # v0.8 稳健性 / sensitivity 摘要
+    heterogeneity_explainer.py # v0.8 CATE 异质性解释摘要
     profile_service.py         # 数据画像
     method_service.py          # 方法选择
     causal_dowhy.py            # DoWhy ATE 与 fallback
@@ -120,6 +140,9 @@ tests/
   test_report_export.py
   test_data_quality.py
   test_dependency_status.py
+  test_causal_trust.py
+  test_sensitivity_service.py
+  test_heterogeneity_explainer.py
   test_langgraph_runner.py
   test_langgraph_trace.py
 docs/
@@ -278,9 +301,9 @@ LLM 变量推荐也用同一套可选 DeepSeek 配置。没配的话会安全跳
 
 当前支持三种下载格式：
 
-- Markdown：保留原有轻量文本报告，便于复制到 README、笔记或 Issue；在 Streamlit 下载时会附加 Data Quality Summary。
-- HTML：基于同一个 `PipelineBundle` 生成展示型报告，包含 summary cards、变量配置、数据画像、Data Quality Summary、方法选择、ATE、CATE 状态、refutation、Reviewer warnings、Agent logs 和局限性说明；v0.6 增加 print-friendly CSS，方便浏览器打印为 PDF。
-- PDF：可选 ReportLab 导出；未安装 ReportLab 时不会影响主流程。
+- Markdown：保留原有轻量文本报告，便于复制到 README、笔记或 Issue；在 Streamlit 下载时会附加 Data Quality Summary 和 v0.8 interpretability summaries。
+- HTML：基于同一个 `PipelineBundle` 生成展示型报告，包含 summary cards、变量配置、数据画像、Data Quality Summary、方法选择、ATE、CATE 状态、refutation、Reviewer warnings、Agent logs、Causal Trust Summary、Sensitivity Notes、Heterogeneity Explanation 和局限性说明；v0.6 增加 print-friendly CSS，方便浏览器打印为 PDF。
+- PDF：可选 ReportLab 导出；未安装 ReportLab 时不会影响主流程。v0.8 只同步轻量解释摘要，不改变 PDF optional dependency 边界。
 
 HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 导出是 optional dependency，不加入基础依赖。
 
@@ -299,6 +322,7 @@ HTML 导出使用 Python 标准库完成，不需要新增依赖。PDF 导出是
 - LangGraph 模式不做 checkpoint、持久化、人工干预、动态路由或 LLM 规划器
 - PDF 导出是可选报告层能力，不改变 ATE、CATE、refutation 或 Reviewer 结果
 - Public demo 没有登录、数据库、持久化上传文件或生产级访问控制，不适合在公开环境处理真实业务数据
+- v0.8 的 trust / sensitivity / heterogeneity summaries 只是解释层增强，不能替代识别假设、实验设计或领域专家审查
 
 
 

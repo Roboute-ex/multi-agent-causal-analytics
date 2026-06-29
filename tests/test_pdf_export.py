@@ -103,6 +103,35 @@ def _sample_data_quality() -> dict:
     }
 
 
+def _sample_causal_trust() -> dict:
+    return {
+        "status": "warning",
+        "effect_direction": "positive",
+        "robustness_level": "medium",
+        "key_warnings": ["Observational data cannot rule out unmeasured confounding."],
+        "recommendations": ["Treat refutations as robustness signals, not proof."],
+    }
+
+
+def _sample_sensitivity() -> dict:
+    return {
+        "status": "ok",
+        "sensitivity_status": "stable",
+        "stability_notes": ["Refutation directions are broadly stable."],
+        "limitations": ["Summary is based on available refutations."],
+    }
+
+
+def _sample_heterogeneity() -> dict:
+    return {
+        "status": "skipped",
+        "cate_status": "skipped",
+        "top_effect_modifiers": [],
+        "business_interpretation": "CATE explanation unavailable because CATE was skipped.",
+        "limitations": ["Install optional CATE dependencies to explore heterogeneity."],
+    }
+
+
 def test_pdf_export_module_imports_without_required_dependency():
     module = importlib.import_module("app.core.pdf_export")
 
@@ -121,14 +150,26 @@ def test_build_pdf_report_raises_clear_error_when_unavailable(monkeypatch):
     monkeypatch.setattr(pdf_export, "is_pdf_export_available", lambda: False)
 
     with pytest.raises(PDFExportUnavailableError, match="Optional PDF export requires reportlab"):
-        pdf_export.build_pdf_report(_sample_bundle(), data_quality=_sample_data_quality())
+        pdf_export.build_pdf_report(
+            _sample_bundle(),
+            data_quality=_sample_data_quality(),
+            causal_trust=_sample_causal_trust(),
+            sensitivity_summary=_sample_sensitivity(),
+            heterogeneity_summary=_sample_heterogeneity(),
+        )
 
 
 def test_build_pdf_report_returns_pdf_bytes_when_reportlab_available():
     if not is_pdf_export_available():
         pytest.skip("reportlab is not installed; PDF bytes generation is optional.")
 
-    pdf_bytes = build_pdf_report(_sample_bundle(), data_quality=_sample_data_quality())
+    pdf_bytes = build_pdf_report(
+        _sample_bundle(),
+        data_quality=_sample_data_quality(),
+        causal_trust=_sample_causal_trust(),
+        sensitivity_summary=_sample_sensitivity(),
+        heterogeneity_summary=_sample_heterogeneity(),
+    )
 
     assert isinstance(pdf_bytes, bytes)
     assert b"%PDF" in pdf_bytes[:20]

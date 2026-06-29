@@ -39,3 +39,15 @@
 85-90 秒：
 
 下载 Markdown、HTML 或 optional PDF 报告。说明 deployment readiness 是保留的过渡增强：有安全提示、demo mode indicator 和 optional dependency status。强调项目亮点：数据质量诊断、职责清晰的 Agent 流程、Advanced LangGraph trace、可选依赖 graceful skip、pytest 端到端测试、适合 GitHub 和简历展示。
+
+## v0.8 演示补充
+
+如果面试或 demo 时间允许，可以在结果区额外打开三个 expander：
+
+- `Causal Trust Summary`：说明系统不会把 ATE 直接包装成确定结论，而是给出 effect direction、robustness level、key warnings 和 recommendations。
+- `Robustness / Sensitivity Notes`：说明它基于现有 placebo treatment、random common cause、data subset refutation 做方向稳定性摘要；这是 conservative wrapper，不是新的强依赖。
+- `Heterogeneity Explanation`：说明 CATE 可用时会把 effect modifiers 和分层结果翻译成业务解释；EconML 或 CATE 不可用时显示 skipped，不影响 ATE 主流程。
+
+一句话讲法：
+
+v0.8 的重点不是继续堆 Agent 概念，而是增强因果结果的可信度表达，让用户看到 observational data、confounding risk 和 sample quality risk。

@@ -6,7 +6,13 @@ from typing import Any, Iterable
 from app.core.schemas import PipelineBundle
 
 
-def build_html_report(bundle: PipelineBundle, data_quality: dict[str, Any] | None = None) -> str:
+def build_html_report(
+    bundle: PipelineBundle,
+    data_quality: dict[str, Any] | None = None,
+    causal_trust: dict[str, Any] | None = None,
+    sensitivity_summary: dict[str, Any] | None = None,
+    heterogeneity_summary: dict[str, Any] | None = None,
+) -> str:
     """Build a self-contained HTML report from a finished PipelineBundle."""
     request = bundle.request
     profile = bundle.profile
@@ -51,6 +57,15 @@ def build_html_report(bundle: PipelineBundle, data_quality: dict[str, Any] | Non
 
     if data_quality:
         sections.append(_data_quality_section(data_quality))
+
+    if causal_trust:
+        sections.append(_causal_trust_section(causal_trust))
+
+    if sensitivity_summary:
+        sections.append(_sensitivity_section(sensitivity_summary))
+
+    if heterogeneity_summary:
+        sections.append(_heterogeneity_section(heterogeneity_summary))
 
     if method:
         method_body = _definition_list(
@@ -282,6 +297,58 @@ def _data_quality_section(data_quality: dict[str, Any]) -> str:
     return _section("Data Quality Summary", body)
 
 
+def _causal_trust_section(summary: dict[str, Any]) -> str:
+    body = _definition_list(
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("Effect direction", summary.get("effect_direction", "unknown")),
+            ("Robustness level", summary.get("robustness_level", "unknown")),
+        ]
+    )
+    body += "<h3>Key warnings</h3>"
+    body += _list_or_message(summary.get("key_warnings", []), "No key warnings available.")
+    body += _list_block("Recommendations", summary.get("recommendations", []))
+    return _section("Causal Trust Summary", body)
+
+
+def _sensitivity_section(summary: dict[str, Any]) -> str:
+    body = _definition_list(
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("Sensitivity status", summary.get("sensitivity_status", "unknown")),
+        ]
+    )
+    body += _list_block("Stability notes", summary.get("stability_notes", []))
+    body += _list_block("Warnings", summary.get("warnings", []))
+    body += _list_block("Limitations", summary.get("limitations", []))
+
+    refutation_details = summary.get("refutation_details", {})
+    if refutation_details:
+        body += _key_value_table(
+            "Refutation direction checks",
+            {
+                name: _format_nested_mapping(payload)
+                for name, payload in refutation_details.items()
+            },
+        )
+    return _section("Robustness / Sensitivity Notes", body)
+
+
+def _heterogeneity_section(summary: dict[str, Any]) -> str:
+    body = _definition_list(
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("CATE status", summary.get("cate_status", "unknown")),
+            ("Top effect modifiers", _join_or_none(summary.get("top_effect_modifiers", []))),
+        ]
+    )
+    body += f"<h3>Business interpretation</h3><p>{_e(summary.get('business_interpretation', 'No heterogeneity explanation available.'))}</p>"
+    body += _key_value_table("Segment effect summary", summary.get("segment_effect_summary", {}))
+    body += _key_value_table("SHAP summary", summary.get("shap_summary", {}))
+    body += _list_block("Limitations", summary.get("limitations", []))
+    return _section("Heterogeneity Explanation", body)
+
+
 def _refutations_table(refutations: dict[str, Any]) -> str:
     if not refutations:
         return "<p>No refutation results available.</p>"
@@ -393,6 +460,14 @@ def _format_mapping(payload: dict[str, Any]) -> str:
     if not payload:
         return "None"
     return ", ".join(f"{key}: {value}" for key, value in payload.items())
+
+
+def _format_nested_mapping(payload: Any) -> str:
+    if isinstance(payload, dict):
+        return _format_mapping(payload)
+    if payload is None:
+        return "None"
+    return str(payload)
 
 
 def _format_selected_missingness(payload: dict[str, Any]) -> str:

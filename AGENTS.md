@@ -14,6 +14,7 @@ This repository is a local, GitHub-ready MVP for a multi-agent causal analytics 
 - optional LangGraph orchestration adapter with graceful fallback
 - polished HTML and optional PDF report export
 - deployment readiness and public demo safety messaging
+- causal trust, sensitivity, and heterogeneity explanation summaries
 - refutation checks
 - Reviewer Agent validation
 - Markdown report generation
@@ -22,7 +23,7 @@ Current project status:
 
 - Phase 1 MVP is complete.
 - Phase 2 presentation enhancement is complete.
-- The latest full pytest result should be checked after each change; v0.7 focuses on Advanced LangGraph Orchestration and retains deployment readiness as a transitional enhancement.
+- The latest full pytest result should be checked after each change; v0.8 focuses on Causal Robustness and Interpretability while preserving the deterministic pipeline.
 - Streamlit can be accessed locally.
 - The current priority is stability, GitHub presentation quality, and resume presentation quality.
 
@@ -38,6 +39,9 @@ Current project status:
 - `app/agents/team.py`: core agents, including Data Engineer, Statistician, Causal Agent, Heterogeneity Agent, Reviewer, and Reporter.
 - `app/services/data_quality.py`: lightweight data quality checks returned as a plain dict for UI/report display.
 - `app/services/dependency_status.py`: deployment-safe optional dependency and API configuration status.
+- `app/services/causal_trust.py`: v0.8 plain-dict causal trust summary built from ATE, refutations, reviewer warnings, data quality, sensitivity, and heterogeneity signals.
+- `app/services/sensitivity_service.py`: v0.8 conservative robustness/sensitivity summary wrapper built from existing refutation results.
+- `app/services/heterogeneity_explainer.py`: v0.8 optional CATE explanation helper with graceful skip behavior.
 - `app/services/causal_dowhy.py`: DoWhy ATE estimation and fallback linear adjustment logic.
 - `app/services/cate_econml.py`: optional EconML CATE analysis with graceful skip behavior.
 - `data/generate_synthetic.py`: synthetic marketing sample data generator.
@@ -65,6 +69,9 @@ Current project status:
 - Keep report export as a presentation/download layer; do not make it part of the causal pipeline.
 - Keep PDF export as a presentation/download layer; do not make it part of the causal pipeline.
 - Keep data quality checks as pre-analysis diagnostics and report/UI display; do not make them change ATE/CATE/refutation computation.
+- Keep v0.8 trust, sensitivity, and heterogeneity explanation modules as presentation/interpretability helpers; do not make them alter ATE/CATE/refutation computation.
+- Keep v0.8 service outputs as plain dicts unless the user explicitly asks for schema changes.
+- Do not overstate causal conclusions; summaries must mention observational data limitations, confounding risk, and sample quality risk where relevant.
 - Keep LangGraph as orchestration only; do not add new statistical estimation logic inside graph nodes.
 - Do not add LangGraph checkpoint, persistence, human-in-the-loop, dynamic routing, or LLM planner unless explicitly requested.
 - Lightweight human review checkpoints should stay demo/UI-level only and must not store approvals or uploaded data.
@@ -123,6 +130,7 @@ python -m py_compile app/ui_streamlit.py
 - LangGraph trace tests should validate stable metadata shape without requiring `langgraph` to be installed.
 - Dependency status checks must not expose API key values.
 - Public demo UI should remind users to use sample data and avoid private or sensitive uploads.
+- Causal trust, sensitivity, and heterogeneity explanation tests should not require DeepSeek, EconML, SHAP, LangGraph, or ReportLab.
 
 ## Definition of Done
 
@@ -135,4 +143,5 @@ A change is done only when:
 - no MVP feature is broken.
 - optional EconML and DeepSeek paths remain optional.
 - optional LLM variable recommendation never blocks manual variable selection or causal analysis.
+- v0.8 interpretability summaries remain optional display/report layers and do not mutate the deterministic pipeline result.
 - sensitive local files such as `.env` are not read or exposed.

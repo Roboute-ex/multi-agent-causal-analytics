@@ -80,6 +80,93 @@ def build_data_quality_markdown(data_quality: dict[str, Any] | None) -> str:
     return "\n".join(lines)
 
 
+def build_interpretability_markdown(
+    causal_trust: dict[str, Any] | None = None,
+    sensitivity_summary: dict[str, Any] | None = None,
+    heterogeneity_summary: dict[str, Any] | None = None,
+) -> str:
+    lines: list[str] = []
+
+    if causal_trust:
+        lines.extend(
+            [
+                "",
+                "## Causal Trust Summary",
+                f"- Status: `{causal_trust.get('status', 'unknown')}`",
+                f"- Effect direction: `{causal_trust.get('effect_direction', 'unknown')}`",
+                f"- Robustness level: `{causal_trust.get('robustness_level', 'unknown')}`",
+                "",
+                "### Key Warnings",
+            ]
+        )
+        lines.extend(_markdown_list_or_message(causal_trust.get("key_warnings", []), "No key warnings available."))
+        lines.extend(["", "### Recommendations"])
+        lines.extend(
+            _markdown_list_or_message(
+                causal_trust.get("recommendations", []),
+                "No recommendations available.",
+            )
+        )
+
+    if sensitivity_summary:
+        lines.extend(
+            [
+                "",
+                "## Robustness / Sensitivity Notes",
+                f"- Status: `{sensitivity_summary.get('status', 'unknown')}`",
+                f"- Sensitivity status: `{sensitivity_summary.get('sensitivity_status', 'unknown')}`",
+                "",
+                "### Stability Notes",
+            ]
+        )
+        lines.extend(
+            _markdown_list_or_message(
+                sensitivity_summary.get("stability_notes", []),
+                "No sensitivity notes available.",
+            )
+        )
+        warnings = sensitivity_summary.get("warnings", [])
+        if warnings:
+            lines.extend(["", "### Sensitivity Warnings"])
+            lines.extend(_markdown_list_or_message(warnings, "No sensitivity warnings available."))
+        limitations = sensitivity_summary.get("limitations", [])
+        if limitations:
+            lines.extend(["", "### Sensitivity Limitations"])
+            lines.extend(_markdown_list_or_message(limitations, "No sensitivity limitations available."))
+
+    if heterogeneity_summary:
+        lines.extend(
+            [
+                "",
+                "## Heterogeneity Explanation",
+                f"- Status: `{heterogeneity_summary.get('status', 'unknown')}`",
+                f"- CATE status: `{heterogeneity_summary.get('cate_status', 'unknown')}`",
+                f"- Top effect modifiers: {_join_or_none(heterogeneity_summary.get('top_effect_modifiers', []))}",
+                "",
+                "### Business Interpretation",
+                str(
+                    heterogeneity_summary.get(
+                        "business_interpretation",
+                        "No heterogeneity explanation available.",
+                    )
+                ),
+            ]
+        )
+        segment_summary = heterogeneity_summary.get("segment_effect_summary", {})
+        if segment_summary:
+            lines.extend(["", "### Segment Effect Summary"])
+            for key, value in segment_summary.items():
+                lines.append(f"- {key}: {value}")
+        limitations = heterogeneity_summary.get("limitations", [])
+        if limitations:
+            lines.extend(["", "### Heterogeneity Limitations"])
+            lines.extend(_markdown_list_or_message(limitations, "No heterogeneity limitations available."))
+
+    if lines:
+        lines.append("")
+    return "\n".join(lines)
+
+
 def build_markdown_report(bundle: PipelineBundle) -> str:
     request = bundle.request
     profile = bundle.profile
@@ -227,6 +314,13 @@ def _format_rate(value: Any) -> str:
 
 def _join_or_none(values: list[Any]) -> str:
     return ", ".join(str(value) for value in values) if values else "None"
+
+
+def _markdown_list_or_message(items: list[Any], message: str) -> list[str]:
+    values = [item for item in items if item]
+    if not values:
+        return [f"- {message}"]
+    return [f"- {item}" for item in values]
 
 
 def _format_mapping(payload: dict[str, Any]) -> str:
