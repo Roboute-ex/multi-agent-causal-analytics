@@ -16,7 +16,13 @@ def is_pdf_export_available() -> bool:
     return find_spec("reportlab") is not None
 
 
-def build_pdf_report(bundle: PipelineBundle, data_quality: dict[str, Any] | None = None) -> bytes:
+def build_pdf_report(
+    bundle: PipelineBundle,
+    data_quality: dict[str, Any] | None = None,
+    causal_trust: dict[str, Any] | None = None,
+    sensitivity_summary: dict[str, Any] | None = None,
+    heterogeneity_summary: dict[str, Any] | None = None,
+) -> bytes:
     if not is_pdf_export_available():
         raise PDFExportUnavailableError(
             "Optional PDF export requires reportlab. Install requirements-pdf.txt to enable it."
@@ -114,6 +120,18 @@ def build_pdf_report(bundle: PipelineBundle, data_quality: dict[str, Any] | None
     heading("Data Quality Summary")
     _add_data_quality(story, data_quality, styles, Table, TableStyle, colors)
 
+    if causal_trust:
+        heading("Causal Trust Summary")
+        _add_causal_trust(story, causal_trust, styles, Table, TableStyle, colors)
+
+    if sensitivity_summary:
+        heading("Robustness / Sensitivity Notes")
+        _add_sensitivity_summary(story, sensitivity_summary, styles, Table, TableStyle, colors)
+
+    if heterogeneity_summary:
+        heading("Heterogeneity Explanation")
+        _add_heterogeneity_summary(story, heterogeneity_summary, styles, Table, TableStyle, colors)
+
     heading("Refutation Results")
     _add_refutations(story, bundle.estimate.refutations if bundle.estimate else {}, styles, Table, TableStyle, colors)
 
@@ -175,6 +193,107 @@ def _add_data_quality(
         story,
         data_quality.get("warnings", []),
         "No major data quality warnings.",
+        styles,
+    )
+
+
+def _add_causal_trust(
+    story: list[Any],
+    summary: dict[str, Any],
+    styles: Any,
+    table_cls: Any,
+    table_style_cls: Any,
+    colors_module: Any,
+) -> None:
+    _add_key_value_table(
+        story,
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("Effect direction", summary.get("effect_direction", "unknown")),
+            ("Robustness level", summary.get("robustness_level", "unknown")),
+        ],
+        styles,
+        table_cls,
+        table_style_cls,
+        colors_module,
+    )
+    _add_list_or_message(
+        story,
+        summary.get("key_warnings", []),
+        "No key warnings available.",
+        styles,
+    )
+    _add_list_or_message(
+        story,
+        summary.get("recommendations", []),
+        "No recommendations available.",
+        styles,
+    )
+
+
+def _add_sensitivity_summary(
+    story: list[Any],
+    summary: dict[str, Any],
+    styles: Any,
+    table_cls: Any,
+    table_style_cls: Any,
+    colors_module: Any,
+) -> None:
+    _add_key_value_table(
+        story,
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("Sensitivity status", summary.get("sensitivity_status", "unknown")),
+        ],
+        styles,
+        table_cls,
+        table_style_cls,
+        colors_module,
+    )
+    _add_list_or_message(
+        story,
+        summary.get("stability_notes", []),
+        "No sensitivity notes available.",
+        styles,
+    )
+    _add_list_or_message(
+        story,
+        summary.get("limitations", []),
+        "No sensitivity limitations available.",
+        styles,
+    )
+
+
+def _add_heterogeneity_summary(
+    story: list[Any],
+    summary: dict[str, Any],
+    styles: Any,
+    table_cls: Any,
+    table_style_cls: Any,
+    colors_module: Any,
+) -> None:
+    _add_key_value_table(
+        story,
+        [
+            ("Status", summary.get("status", "unknown")),
+            ("CATE status", summary.get("cate_status", "unknown")),
+            ("Top effect modifiers", _join_or_none(summary.get("top_effect_modifiers", []))),
+        ],
+        styles,
+        table_cls,
+        table_style_cls,
+        colors_module,
+    )
+    _add_list_or_message(
+        story,
+        [summary.get("business_interpretation", "No heterogeneity explanation available.")],
+        "No heterogeneity explanation available.",
+        styles,
+    )
+    _add_list_or_message(
+        story,
+        summary.get("limitations", []),
+        "No heterogeneity limitations available.",
         styles,
     )
 

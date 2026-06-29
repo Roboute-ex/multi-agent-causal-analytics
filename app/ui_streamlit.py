@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.core.orchestrator import AnalyticsTeamOrchestrator
 from app.core.pdf_export import PDFExportUnavailableError, build_pdf_report, is_pdf_export_available
-from app.core.report import build_data_quality_markdown
+from app.core.report import build_data_quality_markdown, build_interpretability_markdown
 from app.core.report_export import build_html_report
 from app.core.schemas import AnalysisRequest
 from app.graph.langgraph_runner import (
@@ -25,6 +25,9 @@ from app.graph.langgraph_runner import (
 from app.services.data_loader import is_excel_file, list_excel_sheets, read_dataset
 from app.services.data_quality import run_data_quality_checks
 from app.services.dependency_status import get_optional_dependency_status
+from app.services.causal_trust import build_causal_trust_summary
+from app.services.heterogeneity_explainer import explain_heterogeneity
+from app.services.sensitivity_service import build_sensitivity_summary
 from app.services.variable_recommender import VariableRecommendation, recommend_variables
 
 
@@ -273,6 +276,71 @@ def _langgraph_trace_frame(trace: list[dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _show_causal_trust_summary(summary: dict[str, Any]) -> None:
+    with st.expander("Causal Trust Summary", expanded=True):
+        cols = st.columns(3)
+        cols[0].metric("Trust status", summary.get("status", "unknown"))
+        cols[1].metric("Effect direction", summary.get("effect_direction", "unknown"))
+        cols[2].metric("Robustness", summary.get("robustness_level", "unknown"))
+        warnings = summary.get("key_warnings", [])
+        recommendations = summary.get("recommendations", [])
+        if warnings:
+            st.markdown("**Key warnings**")
+            for warning in warnings:
+                st.warning(warning)
+        if recommendations:
+            st.markdown("**Recommendations**")
+            for item in recommendations:
+                st.info(item)
+
+
+def _show_sensitivity_summary(summary: dict[str, Any]) -> None:
+    with st.expander("Robustness / Sensitivity Notes", expanded=False):
+        st.metric("Sensitivity status", summary.get("sensitivity_status", "unknown"))
+        notes = summary.get("stability_notes", [])
+        warnings = summary.get("warnings", [])
+        if notes:
+            st.markdown("**Stability notes**")
+            for note in notes:
+                st.success(note)
+        if warnings:
+            st.markdown("**Warnings**")
+            for warning in warnings:
+                st.warning(warning)
+        details = summary.get("refutation_details", {})
+        if details:
+            st.dataframe(
+                pd.DataFrame(
+                    [{"refutation": key, **value} for key, value in details.items()]
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+        if summary.get("limitations"):
+            st.markdown("**Limitations**")
+            for item in summary["limitations"]:
+                st.caption(item)
+
+
+def _show_heterogeneity_explanation(summary: dict[str, Any]) -> None:
+    with st.expander("Heterogeneity Explanation", expanded=False):
+        st.metric("CATE explanation status", summary.get("cate_status", "unknown"))
+        st.write(summary.get("business_interpretation", "No heterogeneity explanation available."))
+        modifiers = summary.get("top_effect_modifiers", [])
+        if modifiers:
+            st.markdown(f"**Top effect modifiers:** {', '.join(modifiers)}")
+        segment_summary = summary.get("segment_effect_summary", {})
+        if segment_summary:
+            st.json(segment_summary)
+        shap_summary = summary.get("shap_summary")
+        if shap_summary:
+            st.caption(f"SHAP: {shap_summary.get('status')} - {shap_summary.get('message')}")
+        if summary.get("limitations"):
+            st.markdown("**Limitations**")
+            for item in summary["limitations"]:
+                st.caption(item)
+
+
 st.set_page_config(page_title="Multi-Agent Causal Analytics Team", layout="wide")
 st.title("Multi-Agent Causal Analytics Team")
 st.caption("一个用于因果分析的多 Agent 数据分析团队")
@@ -459,6 +527,14 @@ if df is not None:
             bundle = AnalyticsTeamOrchestrator().run_dataframe(request, df)
 
         st.caption(f"Orchestration mode: `{orchestration_mode}`")
+        sensitivity_summary = build_sensitivity_summary(bundle)
+        heterogeneity_summary = explain_heterogeneity(bundle.cate, request.effect_modifiers)
+        causal_trust_summary = build_causal_trust_summary(
+            bundle=bundle,
+            data_quality=data_quality,
+            sensitivity_summary=sensitivity_summary,
+            heterogeneity_summary=heterogeneity_summary,
+        )
         if langgraph_trace:
             with st.expander("LangGraph execution trace / step timeline", expanded=True):
                 st.dataframe(
@@ -495,6 +571,10 @@ if df is not None:
             elif bundle.cate.status == "error":
                 st.warning(bundle.cate.error or "CATE 分析失败，但主流程已继续。")
 
+        _show_causal_trust_summary(causal_trust_summary)
+        _show_sensitivity_summary(sensitivity_summary)
+        _show_heterogeneity_explanation(heterogeneity_summary)
+
         tab_report, tab_robustness, tab_cate, tab_agents = st.tabs(
             ["分析报告", "稳健性检查", "CATE 异质性", "Agent 日志"]
         )
@@ -508,6 +588,17 @@ if df is not None:
                     if report_markdown
                     else data_quality_markdown
                 )
+            interpretability_markdown = build_interpretability_markdown(
+                causal_trust=causal_trust_summary,
+                sensitivity_summary=sensitivity_summary,
+                heterogeneity_summary=heterogeneity_summary,
+            )
+            if interpretability_markdown:
+                report_markdown = (
+                    f"{report_markdown}\n{interpretability_markdown}"
+                    if report_markdown
+                    else interpretability_markdown
+                )
             st.markdown(report_markdown)
             download_cols = st.columns(3)
             with download_cols[0]:
@@ -520,14 +611,26 @@ if df is not None:
             with download_cols[1]:
                 st.download_button(
                     "下载 HTML 报告",
-                    data=build_html_report(bundle, data_quality=data_quality),
+                    data=build_html_report(
+                        bundle,
+                        data_quality=data_quality,
+                        causal_trust=causal_trust_summary,
+                        sensitivity_summary=sensitivity_summary,
+                        heterogeneity_summary=heterogeneity_summary,
+                    ),
                     file_name="multi_agent_causal_report.html",
                     mime="text/html",
                 )
             with download_cols[2]:
                 if is_pdf_export_available():
                     try:
-                        pdf_report = build_pdf_report(bundle, data_quality=data_quality)
+                        pdf_report = build_pdf_report(
+                            bundle,
+                            data_quality=data_quality,
+                            causal_trust=causal_trust_summary,
+                            sensitivity_summary=sensitivity_summary,
+                            heterogeneity_summary=heterogeneity_summary,
+                        )
                     except PDFExportUnavailableError as exc:
                         st.info(f"Optional PDF export is unavailable: {exc}")
                     else:

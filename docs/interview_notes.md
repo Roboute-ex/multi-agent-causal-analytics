@@ -127,3 +127,21 @@ In v0.7, I focused on deployment readiness rather than adding a login system or 
 英文回答：
 
 In v0.7, I strengthened the optional LangGraph orchestration layer instead of replacing the stable deterministic pipeline. The LangGraph mode now exposes an execution trace, step timeline, and graph state summary, which makes the multi-agent workflow engineering easier to explain. The output still uses the existing `PipelineBundle`, and LangGraph remains optional with graceful fallback when it is not installed.
+
+## 14. v0.8 为什么转向 causal robustness and interpretability？
+
+中文讲法：
+
+v0.8 我没有继续堆 UI 或 Agent 概念，而是转向因果分析可信度建设。由于观测数据下的因果结论依赖可检验和不可检验假设，我增加了 Causal Trust Summary、Sensitivity Notes 和 Heterogeneity Explanation，把 ATE、refutation、data quality 和 CATE 结果转成业务用户能理解的稳健性提示。
+
+回答要点：
+
+- Causal Trust Summary 不证明因果关系，只保守总结 effect direction、robustness level、key warnings 和 recommendations。
+- Sensitivity Notes 优先复用已有 refutation，不为了 v0.8 大改 DoWhy 或引入新依赖。
+- Heterogeneity Explanation 让 CATE 结果更适合业务分层分析；EconML 或 CATE 不可用时 graceful skip。
+- 这三个模块都是普通 dict 输出，不新增 schema，也不修改 deterministic causal pipeline。
+- 报告导出层同步展示这些解释摘要，但 ATE、CATE、refutation 计算逻辑保持不变。
+
+英文回答：
+
+In v0.8, I intentionally moved away from adding more agent-framework features and focused on causal result trustworthiness. Since causal conclusions from observational data depend on both testable and untestable assumptions, I added Causal Trust Summary, Sensitivity Notes, and Heterogeneity Explanation to translate ATE, refutation checks, data quality warnings, and optional CATE output into conservative business-facing interpretation.
