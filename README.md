@@ -1,9 +1,9 @@
 # Multi-Agent 因果分析团队 MVP
 这个项目的思路是把一次完整的结构化数据分析拆给几个职责清晰的 Agent 来分工完成：先做数据画像、判断分析方法，再用 DoWhy 估计平均处理效应（ATE），跑 refutation 做稳健性检验，装了 EconML 的话还会顺带做 CATE 异质性分析，最后生成 Markdown / HTML / 可选 PDF 报告。
 
-整个项目的重点是稳定、纯本地、能测试、能 demo，适合直接放到 GitHub 上展示。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关着，不影响主流程。v0.4 加了轻量数据质量检查和 Streamlit 内置图表；v0.5 加了默认关闭的 LangGraph 实验编排适配层；v0.6 把 HTML 报告好好打磨了一遍，同时加了可选的 PDF 导出；v0.7 正式主题是 Advanced LangGraph Orchestration，并保留 deployment readiness / public demo safety 作为过渡增强。
+整个项目的重点是稳定、纯本地并且能测试。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关着，不影响主流程。v0.4 加了轻量数据质量检查和 Streamlit 内置图表；v0.5 加了默认关闭的 LangGraph 实验编排适配层；v0.6 完善了 HTML 报告，同时加了可选的 PDF 导出；v0.7 正式主题是 Advanced LangGraph Orchestration，并保留 deployment readiness / public demo safety 作为过渡增强。
 
-## 能做什么
+## 功能
 
 - 上传 `.csv`、`.xlsx`、`.xls`、`.xlsm` 文件，或直接使用内置营销样例数据
 - 选择 Treatment、Outcome、Confounders、Effect Modifiers
@@ -26,9 +26,9 @@
 
 这个功能默认关闭。开启后，用户可以用自然语言描述问题，比如"优惠券是否提升了购买率？"，系统会根据当前数据集的列名和字段画像，尝试推荐 Treatment、Outcome、Confounders 和 Effect Modifiers。
 
-有几点要说清楚：它只是 UI 辅助，不会自动触发因果分析，也不替代你手动选变量。没配 DeepSeek API key 的话会显示 `skipped`；LLM 返回格式有问题时会 fallback，你还是可以手动选所有变量。
+注意：它只是 UI 辅助，不会自动触发因果分析，也不替代你手动选变量。没配 DeepSeek API key 的话会显示 `skipped`；LLM 返回格式有问题时会 fallback，你还是可以手动选所有变量。
 
-这个功能复用现有的可选 DeepSeek 配置，但不是 MVP 主流程的必要依赖。**别把真实 API key 写进代码、README 或提交到 GitHub。**
+这个功能复用现有的可选 DeepSeek 配置，但不是 MVP 主流程的必要依赖。
 
 
 ## v0.7 Advanced LangGraph Orchestration
