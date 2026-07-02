@@ -3,9 +3,9 @@
 
 Latest version: v0.9 Streamlit App Testing and UX Reliability.
 
-整个项目的重点是稳定、纯本地、能测试、能 demo，适合直接放到 GitHub 上展示。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关着，不影响主流程。v0.4 加了轻量数据质量检查和 Streamlit 内置图表；v0.5 加了默认关闭的 LangGraph 实验编排适配层；v0.6 把 HTML 报告好好打磨了一遍，同时加了可选的 PDF 导出；v0.7 正式主题是 Advanced LangGraph Orchestration，并保留 deployment readiness / public demo safety 作为过渡增强。
+整个项目的重点是稳定、纯本地、能测试、能 demo，适合直接放到 GitHub 上展示。不依赖 OpenAI API，也不需要数据库或登录系统。DeepSeek / LLM 报告增强是可选功能，默认关闭，不影响主流程。版本演进上，v0.4 加入轻量数据质量检查和 Streamlit 内置图表；v0.5 加入默认关闭的 LangGraph 实验编排适配层；v0.6 打磨 HTML 报告并新增可选 PDF 导出；v0.7 正式强化 Advanced LangGraph Orchestration，并保留 deployment readiness / public demo safety 作为过渡增强；v0.8 增加 Causal Trust Summary、Robustness / Sensitivity Notes 和 Heterogeneity Explanation；v0.9 则补强 Streamlit AppTest smoke/regression tests 与 UX reliability，提升公开 demo 和后续迭代的稳定性.
 
-## 能做什么
+## 功能
 
 - 上传 `.csv`、`.xlsx`、`.xls`、`.xlsm` 文件，或直接使用内置营销样例数据
 - 选择 Treatment、Outcome、Confounders、Effect Modifiers
@@ -29,9 +29,9 @@ Latest version: v0.9 Streamlit App Testing and UX Reliability.
 
 这个功能默认关闭。开启后，用户可以用自然语言描述问题，比如"优惠券是否提升了购买率？"，系统会根据当前数据集的列名和字段画像，尝试推荐 Treatment、Outcome、Confounders 和 Effect Modifiers。
 
-有几点要说清楚：它只是 UI 辅助，不会自动触发因果分析，也不替代你手动选变量。没配 DeepSeek API key 的话会显示 `skipped`；LLM 返回格式有问题时会 fallback，你还是可以手动选所有变量。
+注意：它只是 UI 辅助，不会自动触发因果分析，也不替代你手动选变量。没配 DeepSeek API key 的话会显示 `skipped`；LLM 返回格式有问题时会 fallback，你还是可以手动选所有变量。
 
-这个功能复用现有的可选 DeepSeek 配置，但不是 MVP 主流程的必要依赖。**别把真实 API key 写进代码、README 或提交到 GitHub。**
+这个功能复用现有的可选 DeepSeek 配置，但不是 MVP 主流程的必要依赖。
 
 
 ## v0.7 Advanced LangGraph Orchestration
