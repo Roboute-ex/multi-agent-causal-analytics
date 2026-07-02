@@ -2,6 +2,23 @@
 
 All notable changes for the Multi-Agent Causal Analytics Team are documented here.
 
+## v0.9 - Streamlit App Testing and UX Reliability
+
+### Added
+
+- Added Streamlit app smoke tests with `streamlit.testing.v1.AppTest` when available.
+- Added demo-mode safety message regression checks.
+- Added UI reliability checks for key sections including Data Quality, Causal Trust Summary, Robustness / Sensitivity Notes, Heterogeneity Explanation, LangGraph copy, and report downloads.
+- Added optional dependency status panel regression coverage without making optional dependencies mandatory.
+- Added v0.9 release documentation in `docs/releases/v0.9.md`.
+
+### Notes
+
+- No core causal pipeline logic was changed.
+- No real data, `.env`, `.streamlit/secrets.toml`, database, login system, OpenAI API, or production deployment system was added.
+- Optional LangGraph, EconML, ReportLab, and DeepSeek paths remain optional with graceful fallback.
+- Actual full test result: `82 passed, 1 skipped` with `python -m pytest -q`.
+
 ## v0.8 - Causal Robustness and Interpretability
 
 ### Added

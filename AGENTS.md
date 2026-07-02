@@ -15,6 +15,7 @@ This repository is a local, GitHub-ready MVP for a multi-agent causal analytics 
 - polished HTML and optional PDF report export
 - deployment readiness and public demo safety messaging
 - causal trust, sensitivity, and heterogeneity explanation summaries
+- Streamlit app smoke/regression tests for demo reliability
 - refutation checks
 - Reviewer Agent validation
 - Markdown report generation
@@ -23,7 +24,7 @@ Current project status:
 
 - Phase 1 MVP is complete.
 - Phase 2 presentation enhancement is complete.
-- The latest full pytest result should be checked after each change; v0.8 focuses on Causal Robustness and Interpretability while preserving the deterministic pipeline.
+- The latest full pytest result should be checked after each change; v0.9 focuses on Streamlit App Testing and UX Reliability while preserving the deterministic pipeline.
 - Streamlit can be accessed locally.
 - The current priority is stability, GitHub presentation quality, and resume presentation quality.
 
@@ -47,6 +48,7 @@ Current project status:
 - `data/generate_synthetic.py`: synthetic marketing sample data generator.
 - `data/sample_marketing.csv`: built-in sample dataset for demos and tests.
 - `tests/`: pytest coverage for the pipeline, data loading, optional CATE skip, and refutation behavior.
+- `tests/test_streamlit_app_smoke.py`: v0.9 Streamlit AppTest smoke/regression coverage for public demo UX and key result sections.
 
 ## Development Rules
 
@@ -77,6 +79,12 @@ Current project status:
 - Lightweight human review checkpoints should stay demo/UI-level only and must not store approvals or uploaded data.
 - Keep deployment readiness lightweight; do not add login, database, persistent uploaded data storage, Docker, Kubernetes, or production access control unless explicitly requested.
 - Do not add matplotlib, seaborn, or plotly for v0.4-style lightweight charts; prefer pandas and Streamlit built-ins.
+- Streamlit app tests should be smoke/regression oriented.
+- Avoid brittle screenshot tests and real browser automation for app smoke coverage.
+- `streamlit.testing.v1.AppTest` should be optional/skippable when unavailable.
+- Do not require optional causal/reporting/LLM dependencies for Streamlit smoke tests.
+- Do not use real data, API keys, private local files, or uploads in tests.
+- Do not modify the core causal pipeline for UI tests unless a test proves a necessary frontend compatibility bug.
 - Prefer small, targeted edits that keep the existing repository layout intact.
 
 ## Commands
@@ -131,6 +139,7 @@ python -m py_compile app/ui_streamlit.py
 - Dependency status checks must not expose API key values.
 - Public demo UI should remind users to use sample data and avoid private or sensitive uploads.
 - Causal trust, sensitivity, and heterogeneity explanation tests should not require DeepSeek, EconML, SHAP, LangGraph, or ReportLab.
+- Streamlit AppTest coverage should check initial render, public demo safety copy, optional dependency status, key result sections, and report download controls without brittle screenshots.
 
 ## Definition of Done
 

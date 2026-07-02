@@ -51,3 +51,17 @@
 一句话讲法：
 
 v0.8 的重点不是继续堆 Agent 概念，而是增强因果结果的可信度表达，让用户看到 observational data、confounding risk 和 sample quality risk。
+
+## v0.9 演示补充
+
+v0.9 的 demo 讲法可以放在最后 15 秒，突出工程可靠性：
+
+1. 先展示正常 Streamlit 主流程：样例数据、Data Quality、ATE、Causal Trust、Sensitivity、Heterogeneity 和报告下载。
+2. 再说明项目已经加入 Streamlit AppTest smoke tests，不依赖真实浏览器、截图、网络或 API key。
+3. 展示 `python -m pytest tests\test_streamlit_app_smoke.py -q` 和全量 pytest 结果。
+4. 强调 public demo safety message、optional dependency status、关键 UI section 和 report download 都纳入回归测试。
+5. 说明这让项目更像一个可维护的数据产品，而不是一次性的 notebook demo。
+
+一句话讲法：
+
+v0.9 没有继续增加复杂因果功能，而是把 Streamlit demo 路径纳入自动化 smoke/regression tests，确保后续迭代不会破坏公开展示体验。
